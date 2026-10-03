@@ -193,7 +193,7 @@ footer p{max-width:70ch;margin:0 0 10px}
       <rect width="100%" height="100%" filter="url(#grainf)"/>
     </svg>
     <div class="head">
-      <h1>Who owns<br>the movies</h1>
+      <h1>American Film<br>& Television Industry</h1>
       <p class="dek">Hollywood's studios, their film labels, TV networks and streamers, and their biggest titles. Select a circle to open it.</p>
       <nav class="crumbs" id="crumbs" aria-label="Where you are"></nav>
       <button class="logo-btn" id="logoBtn" type="button" hidden></button>
@@ -1113,7 +1113,7 @@ function renderSide(){
   const n = focus, leaf = !n.children;
   let owner, stats, legend;
   if (n === ROOT){
-    owner = "Sized by share of 2025 US and Canada ticket sales. Currently only showing films as of 2025.";
+    owner = "Sized by share of 2025 US and Canada ticket sales.";
     stats = [["Share mapped", "90.6%"], ["Brands", n.leaves.length], ["Films", n.movies.length], ["Shows", n.shows.length]];
     legend = "Circle area shows share of 2025 ticket sales. The dots around each circle are its brands.";
   } else {
