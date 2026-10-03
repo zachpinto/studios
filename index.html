@@ -1,0 +1,1396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Who owns the movies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+:root{
+  --ground:#173B6F; --ground-deep:#0D2850;
+  --chalk:#EAF2FB; --chalk-2:rgba(234,242,251,.70); --chalk-3:rgba(234,242,251,.26);
+  --paper:#EDF2F7; --ink:#10284D; --ink-2:#4B6283; --rule:#CBD7E5; --row-hover:#E1E9F2;
+  --display:"Big Shoulders Display","Big Shoulders","Arial Narrow","Roboto Condensed",sans-serif;
+  --text:"Newsreader",Georgia,"Times New Roman",serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#11305E; --ground-deep:#081B38;
+    --paper:#0B182E; --ink:#E3ECF7; --ink-2:#97ABC8; --rule:#22385C; --row-hover:#12264A;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#11305E; --ground-deep:#081B38;
+  --paper:#0B182E; --ink:#E3ECF7; --ink-2:#97ABC8; --rule:#22385C; --row-hover:#12264A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--text);font-size:17px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit}
+
+/* ---------- Stage ---------- */
+.stage{
+  position:relative;isolation:isolate;overflow:clip;color:var(--chalk);
+  display:grid;grid-template-columns:minmax(290px,370px) 1fr;grid-template-rows:auto 1fr;
+  grid-template-areas:"head orrery" "info orrery";
+  min-height:min(94vh,960px);
+  background:radial-gradient(110% 95% at 66% 48%, var(--ground) 0%, var(--ground-deep) 92%);
+}
+.grain{position:absolute;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;opacity:.5;mix-blend-mode:soft-light}
+.head{grid-area:head;padding:clamp(26px,4vw,52px) clamp(22px,3.4vw,48px) 0}
+.info{grid-area:info;padding:28px clamp(22px,3.4vw,48px) clamp(26px,4vw,52px);align-self:end}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(52px,6vw,88px);line-height:.84;letter-spacing:-.005em;margin:0}
+.dek{font-style:italic;font-size:18px;line-height:1.45;color:var(--chalk-2);max-width:31ch;margin:16px 0 0}
+.crumbs{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:15px;margin-top:22px;min-height:24px}
+.crumbs button{color:var(--chalk-2);background:none;border:0;padding:2px 0;cursor:pointer;text-decoration:underline;text-decoration-color:var(--chalk-3);text-underline-offset:4px}
+.crumbs button:hover{color:var(--chalk)}
+.crumbs .sep{color:var(--chalk-3)}
+.crumbs [aria-current]{color:var(--chalk)}
+.info h2{font-family:var(--display);font-weight:800;font-size:clamp(34px,3.4vw,50px);line-height:.9;margin:0}
+.owner{margin:10px 0 0;color:var(--chalk-2);font-style:italic;font-size:16px}
+.blurb{margin:14px 0 0;line-height:1.5;max-width:34ch}
+.stats{display:flex;flex-wrap:wrap;gap:8px 28px;margin:22px 0 0}
+.stats dt{font-size:13px;color:var(--chalk-2)}
+.stats dd{margin:0;font-family:var(--display);font-weight:700;font-size:30px;line-height:1.05;font-variant-numeric:tabular-nums}
+.legend{display:flex;gap:12px;align-items:center;font-size:14px;line-height:1.4;color:var(--chalk-2);margin:22px 0 0;max-width:36ch}
+.legend svg{flex:none}
+.to-titles{margin-top:22px;color:var(--ground-deep);background:var(--chalk);border:0;border-radius:999px;padding:9px 18px;font-size:15px;cursor:pointer}
+.to-titles:hover{background:#fff}
+.to-titles:focus-visible,.crumbs button:focus-visible{outline:2px solid var(--chalk);outline-offset:3px}
+
+.logo-btn{margin-top:18px;background:none;border:1px solid var(--chalk-3);color:var(--chalk);border-radius:999px;padding:7px 16px;font-size:15px;cursor:pointer}
+.logo-btn:hover{border-color:var(--chalk)}
+.logo-btn[aria-pressed="true"]{background:var(--chalk);color:var(--ground-deep);border-color:var(--chalk)}
+.logo-btn:focus-visible,.logo-edit button:focus-visible{outline:2px solid var(--chalk);outline-offset:3px}
+.logo-edit{margin-top:16px;padding:16px 18px;border:1px dashed rgba(234,242,251,.42);border-radius:10px;max-width:330px}
+.logo-edit p{margin:0}
+.logo-edit .row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 10px}
+.logo-edit button{background:var(--chalk);color:var(--ground-deep);border:0;border-radius:999px;padding:7px 14px;font-size:14px;cursor:pointer}
+.logo-edit button.ghost{background:none;color:var(--chalk);border:1px solid var(--chalk-3)}
+.logo-edit button:disabled{opacity:.4;cursor:default}
+.logo-edit .hint{font-size:13.5px;line-height:1.4;color:var(--chalk-2)}
+.logo-edit .status{font-size:13.5px;line-height:1.4;margin-top:8px;min-height:1.4em}
+.stage.editing .node.studio.child:not(.inert) .halo,.stage.editing .node.studio.center .halo{stroke-opacity:.75;stroke-dasharray:4 4}
+.node.drop .rim{stroke:var(--chalk);stroke-width:3.2}
+.node image{pointer-events:none}
+.orrery-wrap{grid-area:orrery;position:sticky;top:0;align-self:start;height:min(100vh,980px);min-height:560px}
+#orrery{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:manipulation}
+#orrery text{fill:var(--chalk);font-family:var(--display);text-anchor:middle;pointer-events:none}
+#orrery text.sub{fill:var(--chalk-2);font-family:var(--text);font-style:italic}
+#orrery text.plabel{fill:var(--chalk-2);font-family:var(--text);font-style:italic;font-size:13px;text-anchor:start}
+#orrery text.ini{font-weight:800;fill:#0D2850}
+#orrery text.ini.lt{fill:var(--chalk)}
+#orrery text.olabel{font-size:13px;font-weight:700}
+.node{cursor:pointer;outline:none}
+.node .disc{transition:fill-opacity .25s}
+.node .rim{fill:none;stroke-width:1.4}
+.node .base{fill:var(--ground-deep)}
+.node .inner{fill:none;stroke-opacity:.35;stroke-width:1}
+.node .halo{fill:none;stroke-width:1.2;stroke-dasharray:1 5;stroke-linecap:round;stroke-opacity:0;transition:stroke-opacity .25s}
+.node.center .halo{stroke-opacity:.55}
+.node.child:hover .halo,.node:focus-visible .halo{stroke-opacity:.95}
+.node.child:hover .disc,.node.parent:hover .disc{fill-opacity:.32}
+.node:focus-visible .rim{stroke:var(--chalk);stroke-width:2.6}
+.node.inert{cursor:default}
+.node.inert .rim{stroke-dasharray:3 5}
+.node .hit{fill:transparent}
+.node .dot{stroke:var(--ground-deep);stroke-width:1.2}
+.node.film:hover .dot{stroke:var(--chalk);stroke-width:2}
+.links path{fill:none;stroke-width:1}
+.web{fill:none;stroke:var(--chalk-3);stroke-width:.8;stroke-dasharray:2 6}
+.guides circle{fill:none;stroke:var(--chalk-3);stroke-width:.8}
+.guides line{stroke:var(--chalk-3);stroke-width:1}
+
+.tip{position:absolute;left:0;top:0;pointer-events:none;background:var(--chalk);color:#0D2850;padding:10px 13px 11px;border-radius:6px;font-size:14px;line-height:1.35;max-width:250px;opacity:0;transform:translate(-50%,calc(-100% - 16px));transition:opacity .15s;box-shadow:0 10px 30px rgba(4,16,38,.4);z-index:5}
+.tip.on{opacity:1}
+.tip b{display:block;font-family:var(--display);font-size:21px;font-weight:700;line-height:1.05;margin-bottom:3px}
+.tip span{display:block}
+.tip em{display:block;margin-top:5px;color:#4B6283;font-size:13px}
+
+/* ---------- Titles ---------- */
+.titles{max-width:1120px;margin:0 auto;padding:clamp(44px,6vw,84px) clamp(16px,4vw,40px) 30px}
+.titles-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:18px 40px;margin-bottom:26px}
+.titles h2{font-family:var(--display);font-weight:800;font-size:clamp(36px,4.6vw,62px);line-height:.9;margin:0;max-width:20ch}
+.titles-sub{margin:12px 0 0;color:var(--ink-2);font-size:16px;max-width:62ch}
+.search input{font:inherit;font-size:16px;padding:10px 16px;border:1px solid var(--rule);border-radius:999px;background:transparent;color:var(--ink);width:min(280px,86vw)}
+.search input::placeholder{color:var(--ink-2)}
+.search input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{font-weight:500;font-size:13px;color:var(--ink-2);text-align:left;padding:0 12px 10px;border-bottom:1.5px solid var(--ink)}
+tbody td{padding:10px 12px;border-bottom:1px solid var(--rule);vertical-align:middle}
+tbody tr{transition:background .2s}
+tbody tr:hover{background:var(--row-hover)}
+td.rank{font-family:var(--display);font-weight:700;font-size:22px;color:var(--ink-2);width:3.2ch;text-align:right;font-variant-numeric:tabular-nums;padding-right:4px}
+td.cover{width:62px}
+td.cover a{display:block;width:fit-content;text-decoration:none}
+.frame{position:relative;width:46px;height:64px;border-radius:3px;display:grid;place-items:center;overflow:hidden;
+  background:linear-gradient(162deg, color-mix(in srgb, var(--c) 82%, #fff) 0%, var(--c) 46%, color-mix(in srgb, var(--c) 55%, #0D2850) 100%)}
+.frame::before,.frame::after{content:"";position:absolute;top:3px;bottom:3px;width:4px;background:repeating-linear-gradient(to bottom,rgba(13,40,80,.55) 0 3px,transparent 3px 6px);border-radius:1px}
+.frame::before{left:3px}.frame::after{right:3px}
+.frame span{font-family:var(--display);font-weight:800;font-size:19px;line-height:1;color:#0D2850;letter-spacing:.01em}
+.frame.lt span,.frame.lt small{color:#EAF2FB}
+.frame small{position:absolute;bottom:4px;left:0;right:0;text-align:center;font-size:9px;color:rgba(13,40,80,.8);font-variant-numeric:tabular-nums}
+td.t a{font-size:19px;font-weight:500;line-height:1.25;color:var(--ink);text-decoration:none;background-image:linear-gradient(currentColor,currentColor);background-size:0 1px;background-repeat:no-repeat;background-position:0 100%;transition:background-size .25s}
+td.t a:hover,td.t a:focus-visible{background-size:100% 1px;outline:none}
+.yr{display:block;color:var(--ink-2);font-size:14px}
+.lbl-m{display:none;color:var(--ink-2);font-size:14px;font-style:italic}
+td.g{width:28%;min-width:150px}
+.bar{height:6px;background:var(--rule);border-radius:3px;overflow:hidden;margin-bottom:7px}
+.bar i{display:block;height:100%;border-radius:3px}
+td.g span{font-variant-numeric:tabular-nums;font-size:16px}
+td.s{font-size:15px;line-height:1.35;width:24%}
+.sw{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:1px}
+td.s small{display:block;color:var(--ink-2);font-size:13px;margin-left:16px}
+tr.flash{animation:flash 1.8s ease}
+@keyframes flash{0%,35%{background:var(--row-hover)}100%{background:transparent}}
+.empty{padding:28px 12px;color:var(--ink-2);font-style:italic}
+.kind-tabs{display:flex;gap:6px}
+.kind-tabs:empty{display:none}
+.kind-tabs button{border:1px solid var(--rule);background:transparent;color:var(--ink);border-radius:999px;padding:7px 18px;font-size:15px;cursor:pointer}
+.kind-tabs button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.kind-tabs button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.frame.tv{width:58px;height:42px;border-radius:6px}
+.frame.tv::before,.frame.tv::after{display:none}
+.frame.tv span{font-size:16px;margin-bottom:8px}
+.frame.tv small{bottom:3px}
+
+footer{max-width:1120px;margin:0 auto;padding:10px clamp(16px,4vw,40px) 64px;color:var(--ink-2);font-size:15px}
+footer h3{font-family:var(--display);font-weight:700;font-size:24px;color:var(--ink);margin:30px 0 8px}
+footer p{max-width:70ch;margin:0 0 10px}
+
+@media (max-width:860px){
+  .stage{grid-template-columns:1fr;grid-template-rows:auto auto auto;grid-template-areas:"head" "orrery" "info";min-height:0}
+  .orrery-wrap{position:relative;min-height:0;height:min(104vw,600px)}
+  .info{padding-top:6px}
+  .dek{max-width:40ch}
+}
+@media (max-width:700px){
+  th.s,td.s{display:none}
+  .lbl-m{display:block}
+  td.g{width:34%;min-width:110px}
+  td.t a{font-size:17px}
+  td.cover{width:54px}
+}
+</style>
+</head>
+<body>
+<main>
+  <section class="stage" id="stage" aria-label="Studio map">
+    <svg class="grain" aria-hidden="true">
+      <filter id="grainf"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="3" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 0"/></filter>
+      <rect width="100%" height="100%" filter="url(#grainf)"/>
+    </svg>
+    <div class="head">
+      <h1>Who owns<br>the movies</h1>
+      <p class="dek">Hollywood's studios, their film labels, TV networks and streamers, and their biggest titles. Select a circle to open it.</p>
+      <nav class="crumbs" id="crumbs" aria-label="Where you are"></nav>
+      <button class="logo-btn" id="logoBtn" type="button" hidden></button>
+      <div id="logoPanel" hidden></div>
+      <input id="logoFile" type="file" hidden>
+    </div>
+    <div class="info" id="info" aria-live="polite"></div>
+    <div class="orrery-wrap" id="orreryWrap">
+      <svg id="orrery" aria-label="Interactive map of studios and labels"></svg>
+      <div class="tip" id="tip" role="tooltip"></div>
+    </div>
+  </section>
+
+  <section class="titles" id="titles" aria-labelledby="titlesHeading">
+    <div class="titles-head">
+      <div>
+        <h2 id="titlesHeading"></h2>
+        <p class="titles-sub" id="titlesSub"></p>
+      </div>
+      <div class="kind-tabs" id="kindTabs"></div>
+      <label class="search"><span class="sr">Filter titles</span><input id="filter" type="search" placeholder="Filter titles or studios" autocomplete="off"></label>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th class="rank" scope="col"><span class="sr">Rank</span></th><th scope="col"><span class="sr">Frame</span></th><th scope="col">Title</th><th scope="col" id="metricHead">Worldwide gross</th><th class="s" scope="col">Brand</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <h3>How this map is built</h3>
+    <p>The opening view sizes each company by its share of 2025 US and Canada ticket sales (Comscore figures reported by CNBC, with Screendollars figures for the smaller distributors). Skydance combines Warner Bros. and Paramount; that merger is scheduled to close on October 6, 2026.</p>
+    <p>Inside each company, circles are sized by the combined worldwide gross of the titles listed. Grosses are unadjusted for inflation, rounded, and compiled by hand from Box Office Mojo and The Numbers figures, so treat them as approximate. 2026 releases reflect totals as of mid-2026.</p>
+    <p>TV and streaming brands rank their shows by the number of IMDb user ratings, a rough popularity measure; those counts are approximate. A show is filed under the network or streamer where it premiered when that network is on this map, and otherwise under the studio that made it, with the other side noted. Where a company holds both film and TV, its two halves are sized by how many brands each contains.</p>
+    <p>Only brands each company controls are shown. Joint ventures such as A+E Networks are left out, as are the cable networks Comcast spun off into Versant in January 2026 and Starz, which split from Lionsgate in 2025.</p>
+    <p>Each film sits under the label most tied to it, with co-producers and outside distributors noted beside it. Lists cover each brand's biggest titles rather than complete filmographies. Logos identify each company and belong to their respective owners. Posters are not reproduced: each title gets a generated film frame instead. Titles link to Wikipedia.</p>
+  </footer>
+</main>
+
+<script>
+/* ======================= DATA =======================
+   films: [title, year, worldwide gross in $M, partners, wiki hint]
+   wiki hint: "y" = "Title (YEAR film)", "f" = "Title (film)", other text = exact article name */
+const ROOT = {
+  id:"all", name:"All studios", centerName:"The 2025 box office", color:"#EAF2FB",
+  blurb:"Eight companies took roughly nine of every ten dollars spent at US and Canadian cinemas in 2025, and most also own a stack of TV networks and streamers. Disney and the newly combined Skydance sit almost level at the top.",
+  children:[
+  { id:"disney", name:"Disney", owner:"The Walt Disney Company", share:27.5, color:"#6AA8FF",
+    blurb:"The top studio of 2025, carried by Zootopia 2, Lilo & Stitch and Avatar: Fire and Ash, and the owner of ABC, ESPN, FX, Hulu and Disney+.",
+    children:[
+    { id:"marvel", name:"Marvel Studios", films:[
+      ["Avengers: Endgame",2019,2799],["Avengers: Infinity War",2018,2052],["The Avengers",2012,1520,"","y"],
+      ["Avengers: Age of Ultron",2015,1405],["Black Panther",2018,1349,"","f"],["Deadpool & Wolverine",2024,1338,"20th Century Studios"],
+      ["Iron Man 3",2013,1215],["Captain America: Civil War",2016,1153],["Captain Marvel",2019,1131,"","f"],
+      ["Doctor Strange in the Multiverse of Madness",2022,956],["Guardians of the Galaxy Vol. 2",2017,864],
+      ["Black Panther: Wakanda Forever",2022,859],["Thor: Ragnarok",2017,855],["Guardians of the Galaxy Vol. 3",2023,846],
+      ["Guardians of the Galaxy",2014,773,"","f"],["Thor: Love and Thunder",2022,761],["Captain America: The Winter Soldier",2014,714],
+      ["Doctor Strange",2016,678,"","y"],["Thor: The Dark World",2013,645],["Iron Man 2",2010,624],["Ant-Man and the Wasp",2018,623],
+      ["Iron Man",2008,585,"Paramount (distributor)","y"],["The Fantastic Four: First Steps",2025,521],["Ant-Man",2015,519,"","f"],
+      ["Ant-Man and the Wasp: Quantumania",2023,476],["Thor",2011,449,"Paramount (distributor)","f"],
+      ["Shang-Chi and the Legend of the Ten Rings",2021,432],["Captain America: Brave New World",2025,415],["Eternals",2021,402,"","f"],
+      ["Thunderbolts*",2025,382],["Black Widow",2021,380,"","y"],["Captain America: The First Avenger",2011,371,"Paramount (distributor)"],
+      ["The Incredible Hulk",2008,265,"Universal (distributor)","f"],["The Marvels",2023,206]]},
+    { id:"lucasfilm", name:"Lucasfilm", films:[
+      ["Star Wars: The Force Awakens",2015,2068],["Star Wars: The Last Jedi",2017,1333],["Star Wars: The Rise of Skywalker",2019,1077],
+      ["Rogue One",2016,1059],["Star Wars: Episode I – The Phantom Menace",1999,1027,"20th Century Fox (distributor)"],
+      ["Star Wars: Episode III – Revenge of the Sith",2005,868,"20th Century Fox (distributor)"],
+      ["Indiana Jones and the Kingdom of the Crystal Skull",2008,791,"Paramount (distributor)"],["Star Wars",1977,775,"20th Century Fox (distributor)","f"],
+      ["Star Wars: Episode II – Attack of the Clones",2002,653,"20th Century Fox (distributor)"],["The Empire Strikes Back",1980,547,"20th Century Fox (distributor)"],
+      ["Return of the Jedi",1983,482,"20th Century Fox (distributor)"],["Indiana Jones and the Last Crusade",1989,474,"Paramount (distributor)"],
+      ["Solo: A Star Wars Story",2018,393],["Raiders of the Lost Ark",1981,390,"Paramount (distributor)"],
+      ["Indiana Jones and the Dial of Destiny",2023,384],["Indiana Jones and the Temple of Doom",1984,333,"Paramount (distributor)"]]},
+    { id:"pixar", name:"Pixar", films:[
+      ["Inside Out 2",2024,1699],["Incredibles 2",2018,1243],["Toy Story 4",2019,1073],["Toy Story 3",2010,1067],["Finding Dory",2016,1029],
+      ["Finding Nemo",2003,941],["Inside Out",2015,858,"","y"],["Coco",2017,814,"","y"],["Monsters University",2013,743],["Up",2009,735,"","y"],
+      ["The Incredibles",2004,631],["Ratatouille",2007,624,"","f"],["Monsters, Inc.",2001,579],["Cars 2",2011,560],["Brave",2012,541,"","y"],
+      ["WALL-E",2008,521],["Toy Story 2",1999,511],["Elemental",2023,496,"","y"],["Cars",2006,462,"","f"],["Toy Story",1995,394],
+      ["Cars 3",2017,384],["A Bug's Life",1998,363],["The Good Dinosaur",2015,333],["Lightyear",2022,226,"","f"],["Elio",2025,154,"","f"]]},
+    { id:"wdas", name:"Walt Disney Animation Studios", films:[
+      ["Zootopia 2",2025,1870],["Frozen II",2019,1450],["Frozen",2013,1290,"","y"],["Moana 2",2024,1059],["Zootopia",2016,1025],
+      ["The Lion King",1994,969],["Moana",2016,687,"","y"],["Big Hero 6",2014,658,"","f"],["Tangled",2010,592],["Ralph Breaks the Internet",2018,529],
+      ["Aladdin",1992,504,"","Aladdin (1992 Disney film)"],["Wreck-It Ralph",2012,471],["Tarzan",1999,448,"","y"],["Beauty and the Beast",1991,440,"","y"],
+      ["Pocahontas",1995,346,"","y"],["The Hunchback of Notre Dame",1996,325,"","y"],["Bolt",2008,310,"","y"],["Mulan",1998,304,"","y"],
+      ["Lilo & Stitch",2002,273],["The Princess and the Frog",2009,271],["Encanto",2021,256],["Wish",2023,255,"","f"]]},
+    { id:"wdp", name:"Walt Disney Pictures", films:[
+      ["The Lion King",2019,1663,"","y"],["Beauty and the Beast",2017,1266,"","y"],["Pirates of the Caribbean: Dead Man's Chest",2006,1066],
+      ["Aladdin",2019,1051,"","y"],["Pirates of the Caribbean: On Stranger Tides",2011,1046],["Lilo & Stitch",2025,1038,"","y"],
+      ["Alice in Wonderland",2010,1025,"","y"],["The Jungle Book",2016,967,"","y"],["Pirates of the Caribbean: At World's End",2007,961],
+      ["Pirates of the Caribbean: Dead Men Tell No Tales",2017,795],["Maleficent",2014,759,"","f"],
+      ["The Chronicles of Narnia: The Lion, the Witch and the Wardrobe",2005,745,"Walden Media"],["Mufasa: The Lion King",2024,723],
+      ["Pirates of the Caribbean: The Curse of the Black Pearl",2003,654],["The Little Mermaid",2023,570,"","y"],["Cinderella",2015,543,"","y"],
+      ["Oz the Great and Powerful",2013,493],["Maleficent: Mistress of Evil",2019,492],["National Treasure: Book of Secrets",2007,457],
+      ["Mary Poppins Returns",2018,349],["Snow White",2025,205,"","y"]]},
+    { id:"20th", name:"20th Century Studios", films:[
+      ["Avatar",2009,2923,"","y"],["Avatar: The Way of Water",2022,2320],["Titanic",1997,2264,"Paramount Pictures","y"],
+      ["Avatar: Fire and Ash",2025,1490],["Bohemian Rhapsody",2018,911,"","f"],["Ice Age: Dawn of the Dinosaurs",2009,887,"Blue Sky Studios"],
+      ["Ice Age: Continental Drift",2012,877,"Blue Sky Studios"],["Independence Day",1996,817,"","y"],["Deadpool 2",2018,785],
+      ["Deadpool",2016,783,"","f"],["X-Men: Days of Future Past",2014,746],["Dawn of the Planet of the Apes",2014,710],
+      ["The Devil Wears Prada 2",2026,682],["Ice Age: The Meltdown",2006,660,"Blue Sky Studios"],["The Martian",2015,630,"","f"],
+      ["Logan",2017,619,"","f"],["Life of Pi",2012,609,"","f"],["Night at the Museum",2006,574],["X-Men: Apocalypse",2016,543],
+      ["The Revenant",2015,533,"New Regency","y"],["War for the Planet of the Apes",2017,490],["Rise of the Planet of the Apes",2011,482],
+      ["Home Alone",1990,477],["Kingdom of the Planet of the Apes",2024,397],["Alien: Romulus",2024,351],["The Devil Wears Prada",2006,326,"","f"]]},
+    { id:"searchlight", name:"Searchlight Pictures", films:[
+      ["Slumdog Millionaire",2008,378,"Warner Bros. (US co-distributor)"],["Black Swan",2010,329,"","f"],["The Full Monty",1997,258],
+      ["Juno",2007,231,"","f"],["The Shape of Water",2017,195],["12 Years a Slave",2013,188,"","f"],["The Grand Budapest Hotel",2014,175],
+      ["Three Billboards Outside Ebbing, Missouri",2017,160],["Poor Things",2023,117,"","f"],["Sideways",2004,109],["Birdman",2014,103,"","f"],
+      ["Little Miss Sunshine",2006,101],["The Favourite",2018,96],["Jojo Rabbit",2019,90],["28 Days Later",2002,85],["Isle of Dogs",2018,64,"","f"],
+      ["Nomadland",2020,39,"","f"]]}
+  ]},
+  { id:"skydance", name:"Skydance", owner:"Paramount and Warner Bros. under one roof", share:27.1, color:"#B49BFF",
+    blurb:"Paramount Skydance's purchase of Warner Bros. Discovery is set to close Oct 6, 2026, and the combined company takes the Skydance name. Both studios keep their own identities.",
+    children:[
+    { id:"paramount", name:"Paramount", color:"#8EA6FF",
+      blurb:"Paramount Pictures, CBS, Paramount+, Showtime, Nickelodeon, MTV and Comedy Central, plus the co-productions Skydance brought with it.",
+      children:[
+      { id:"paramount-pictures", name:"Paramount Pictures", films:[
+        ["Transformers: Dark of the Moon",2011,1124],["Transformers: Age of Extinction",2014,1104],["Transformers: Revenge of the Fallen",2009,836],
+        ["Transformers",2007,709,"DreamWorks Pictures","f"],["Forrest Gump",1994,678],["Transformers: The Last Knight",2017,605],
+        ["War of the Worlds",2005,604,"DreamWorks Pictures","y"],["Mission: Impossible 2",2000,546],["Ghost",1990,505,"","y"],
+        ["Sonic the Hedgehog 3",2024,492,"Sega Sammy","f"],["Bumblebee",2018,468,"","f"],["Gladiator II",2024,462],
+        ["Mission: Impossible",1996,457,"","f"],["Transformers: Rise of the Beasts",2023,439],["Sonic the Hedgehog 2",2022,405,"Sega Sammy","f"],
+        ["Mission: Impossible III",2006,398],["Grease",1978,396,"","f"],["Star Trek",2009,386,"","y"],["Top Gun",1986,357],
+        ["A Quiet Place",2018,341],["Sonic the Hedgehog",2020,320,"Sega Sammy","f"],["G.I. Joe: The Rise of Cobra",2009,302],
+        ["A Quiet Place Part II",2021,297],["A Quiet Place: Day One",2024,262],["Smile",2022,217,"","y"]]},
+      { id:"skydance-media", name:"Skydance Media", films:[
+        ["Top Gun: Maverick",2022,1503,"Paramount Pictures"],["Mission: Impossible – Fallout",2018,791,"Paramount Pictures"],
+        ["Mission: Impossible – Ghost Protocol",2011,694,"Paramount Pictures"],["Mission: Impossible – Rogue Nation",2015,682,"Paramount Pictures"],
+        ["Mission: Impossible – The Final Reckoning",2025,599,"Paramount Pictures"],["Mission: Impossible – Dead Reckoning Part One",2023,568,"Paramount Pictures"],
+        ["World War Z",2013,540,"Paramount Pictures","f"],["Star Trek Into Darkness",2013,467,"Paramount Pictures"],
+        ["Terminator Genisys",2015,440,"Paramount Pictures"],["G.I. Joe: Retaliation",2013,376,"Paramount Pictures"],
+        ["Star Trek Beyond",2016,344,"Paramount Pictures"],["True Grit",2010,252,"Paramount Pictures","y"],
+        ["Jack Reacher",2012,218,"Paramount Pictures","f"],["Gemini Man",2019,173,"Paramount Pictures","f"]]},
+      { id:"nick", name:"Paramount Animation and Nickelodeon Movies", films:[
+        ["Teenage Mutant Ninja Turtles",2014,493,"Platinum Dunes","y"],["The Adventures of Tintin",2011,374,"Amblin, WingNut Films"],
+        ["The SpongeBob Movie: Sponge Out of Water",2015,325],["The Last Airbender",2010,320],["Rango",2011,245,"","y"],
+        ["Teenage Mutant Ninja Turtles: Out of the Shadows",2016,245],["PAW Patrol: The Mighty Movie",2023,202,"Spin Master"],
+        ["Teenage Mutant Ninja Turtles: Mutant Mayhem",2023,180],["PAW Patrol: The Movie",2021,144,"Spin Master"],
+        ["The SpongeBob SquarePants Movie",2004,141]]}
+    ]},
+    { id:"wb", name:"Warner Bros. Discovery", color:"#D5A6FF",
+      blurb:"Warner Bros. film, HBO and HBO Max, CNN, TNT and the Discovery networks. Warner Bros. alone took about 21% of 2025 ticket sales.",
+      children:[
+      { id:"wbp", name:"Warner Bros. Pictures", films:[
+        ["Barbie",2023,1446,"Heyday Films, LuckyChap","f"],["Harry Potter and the Deathly Hallows – Part 2",2011,1342],
+        ["Harry Potter and the Philosopher's Stone",2001,1024,"","f"],["Harry Potter and the Deathly Hallows – Part 1",2010,977],
+        ["A Minecraft Movie",2025,961,"Legendary"],["Harry Potter and the Order of the Phoenix",2007,942,"","f"],
+        ["Harry Potter and the Half-Blood Prince",2009,934,"","f"],["Harry Potter and the Goblet of Fire",2005,896,"","f"],
+        ["Harry Potter and the Chamber of Secrets",2002,880,"","f"],["Inception",2010,836,"Legendary, Syncopy"],
+        ["Fantastic Beasts and Where to Find Them",2016,814,"","f"],["Harry Potter and the Prisoner of Azkaban",2004,797,"","f"],
+        ["The Matrix Reloaded",2003,742,"Village Roadshow"],["Interstellar",2014,731,"Paramount, Legendary","f"],["Gravity",2013,723,"","y"],
+        ["Dune: Part Two",2024,715,"Legendary"],["Fantastic Beasts: The Crimes of Grindelwald",2018,654],["F1",2025,634,"Apple Original Films","f"],
+        ["Wonka",2023,632,"","f"],["Ready Player One",2018,607,"Amblin","f"],["I Am Legend",2007,585,"","f"],
+        ["Godzilla x Kong: The New Empire",2024,572,"Legendary"],["Kong: Skull Island",2017,568,"Legendary"],["Godzilla",2014,524,"Legendary","y"],
+        ["Sherlock Holmes",2009,524,"Village Roadshow","y"],["Troy",2004,497,"","f"],["Charlie and the Chocolate Factory",2005,475,"","f"],
+        ["Godzilla vs. Kong",2021,470,"Legendary"],["The Matrix",1999,467,"Village Roadshow"],["300",2006,456,"Legendary","f"],
+        ["Beetlejuice Beetlejuice",2024,452],["Ocean's Eleven",2001,451],["Dune",2021,407,"Legendary","y"],
+        ["Mad Max: Fury Road",2015,380,"Village Roadshow"],["Sinners",2025,366,"Proximity Media","y"],["Elvis",2022,288,"","y"]]},
+      { id:"dc", name:"DC Studios", films:[
+        ["Aquaman",2018,1152,"","f"],["The Dark Knight Rises",2012,1081,"Legendary, Syncopy"],["Joker",2019,1079,"","y"],
+        ["The Dark Knight",2008,1006,"Legendary, Syncopy"],["Batman v Superman: Dawn of Justice",2016,874],["Wonder Woman",2017,823,"","y"],
+        ["The Batman",2022,772,"","f"],["Suicide Squad",2016,747,"","y"],["Man of Steel",2013,670,"Legendary","f"],["Justice League",2017,658,"","f"],
+        ["Superman",2025,619,"","y"],["Aquaman and the Lost Kingdom",2023,434],["Batman",1989,411,"","y"],["Black Adam",2022,393,"","f"],
+        ["Superman Returns",2006,391],["Batman Begins",2005,373,"Legendary, Syncopy"],["Shazam!",2019,367,"","f"],["The Flash",2023,271,"","f"],
+        ["Joker: Folie à Deux",2024,206],["Birds of Prey",2020,205,"","y"],["The Suicide Squad",2021,168,"","f"],["Wonder Woman 1984",2020,166]]},
+      { id:"newline", name:"New Line Cinema", films:[
+        ["The Lord of the Rings: The Return of the King",2003,1147,"WingNut Films"],["The Hobbit: An Unexpected Journey",2012,1017,"MGM, WingNut Films"],
+        ["The Hobbit: The Battle of the Five Armies",2014,962,"MGM, WingNut Films"],["The Hobbit: The Desolation of Smaug",2013,959,"MGM, WingNut Films"],
+        ["The Lord of the Rings: The Two Towers",2002,947,"WingNut Films"],["The Lord of the Rings: The Fellowship of the Ring",2001,888,"WingNut Films"],
+        ["It",2017,701,"","y"],["The Conjuring: Last Rites",2025,495,"Atomic Monster"],["San Andreas",2015,474,"","f"],["It Chapter Two",2019,473],
+        ["Rampage",2018,428,"","y"],["The Nun",2018,366,"Atomic Monster","y"],["Rush Hour 2",2001,347],["Journey 2: The Mysterious Island",2012,335],
+        ["Se7en",1995,327],["The Conjuring 2",2016,321,"Atomic Monster"],["The Conjuring",2013,320],["Final Destination Bloodlines",2025,316],
+        ["Annabelle: Creation",2017,306],["Wedding Crashers",2005,285],["We're the Millers",2013,270],["The Nun II",2023,269],
+        ["Weapons",2025,268,"","f"],["Annabelle",2014,257,"","f"]]},
+      { id:"wbpa", name:"Warner Bros. Pictures Animation", films:[
+        ["The Lego Movie",2014,470],["The Lego Batman Movie",2017,312],["Smallfoot",2018,214,"","f"],["DC League of Super-Pets",2022,207],
+        ["The Lego Movie 2: The Second Part",2019,192],["Storks",2016,183,"","f"],["Space Jam: A New Legacy",2021,163],
+        ["Tom & Jerry",2021,137,"","y"],["The Lego Ninjago Movie",2017,123]]}
+    ]}
+  ]},
+  { id:"universal", name:"NBCUniversal", owner:"Comcast", share:19.7, color:"#F4C04F",
+    blurb:"Jurassic, Fast & Furious and Wicked on the film side, plus NBC, Peacock, Bravo, Telemundo and Sky. USA, CNBC, MS NOW, E! and Syfy moved to the spun-off Versant in January 2026.",
+    children:[
+    { id:"universal-pictures", name:"Universal Pictures", films:[
+      ["Jurassic World",2015,1671,"Amblin"],["Furious 7",2015,1515],["Jurassic World: Fallen Kingdom",2018,1310,"Amblin"],
+      ["The Fate of the Furious",2017,1236],["Jurassic Park",1993,1058,"Amblin","f"],["Jurassic World Dominion",2022,1004,"Amblin"],
+      ["Oppenheimer",2023,976,"Syncopy","f"],["Jurassic World Rebirth",2025,869,"Amblin"],["E.T. the Extra-Terrestrial",1982,793,"Amblin"],
+      ["Fast & Furious 6",2013,789],["Fast & Furious Presents: Hobbs & Shaw",2019,760],["Wicked",2024,756,"","y"],["F9",2021,726,"","F9 (film)"],
+      ["Fast X",2023,715],["Fast Five",2011,626],["The Lost World: Jurassic Park",1997,618,"Amblin"],["Mamma Mia!",2008,611,"Playtone","f"],
+      ["Fifty Shades of Grey",2015,569,"Focus Features","f"],["King Kong",2005,562,"WingNut Films","y"],["Wicked: For Good",2025,525],
+      ["Meet the Fockers",2004,523],["Bruce Almighty",2003,484],["Jaws",1975,477,"","f"],["The Mummy Returns",2001,433],
+      ["Twisters",2024,371,"Amblin, Warner Bros. (international)"],["Five Nights at Freddy's",2023,297,"Blumhouse","f"],
+      ["Split",2017,279,"Blumhouse","Split (2016 American film)"],["Get Out",2017,255,"Blumhouse"],["Halloween",2018,255,"Blumhouse","y"]]},
+    { id:"illumination", name:"Illumination", films:[
+      ["The Super Mario Bros. Movie",2023,1362,"Nintendo"],["Minions",2015,1159,"","f"],["Despicable Me 3",2017,1035],
+      ["The Super Mario Galaxy Movie",2026,1008,"Nintendo"],["Despicable Me 2",2013,971],["Despicable Me 4",2024,969],
+      ["Minions: The Rise of Gru",2022,940],["The Secret Life of Pets",2016,876],["Sing",2016,634,"","Sing (2016 American film)"],
+      ["Despicable Me",2010,543],["The Grinch",2018,541,"","f"],["The Secret Life of Pets 2",2019,431],["Sing 2",2021,408],
+      ["The Lorax",2012,349,"","f"],["Migration",2023,299,"","y"],["Hop",2011,184,"","f"]]},
+    { id:"dwa", name:"DreamWorks Animation", films:[
+      ["Shrek 2",2004,935],["Shrek the Third",2007,813],["Shrek Forever After",2010,753],["Madagascar 3: Europe's Most Wanted",2012,747],
+      ["Kung Fu Panda 2",2011,665],["How to Train Your Dragon",2025,637,"","y"],["Kung Fu Panda",2008,632],["How to Train Your Dragon 2",2014,621],
+      ["Madagascar: Escape 2 Africa",2008,604],["The Croods",2013,587],["Puss in Boots",2011,555,"","y"],["Kung Fu Panda 4",2024,548],
+      ["Madagascar",2005,542,"","y"],["The Boss Baby",2017,528,"","f"],["How to Train Your Dragon: The Hidden World",2019,525],
+      ["Kung Fu Panda 3",2016,521],["How to Train Your Dragon",2010,495,"","y"],["Shrek",2001,488],["Puss in Boots: The Last Wish",2022,485],
+      ["Monsters vs. Aliens",2009,381],["Trolls",2016,347,"","f"],["The Wild Robot",2024,334],["Megamind",2010,322],["The Bad Guys",2022,250,"","f"]]},
+    { id:"focus", name:"Focus Features", films:[
+      ["Downton Abbey",2019,194,"Carnival Films","f"],["Nosferatu",2024,181,"","y"],["Brokeback Mountain",2005,178],["Conclave",2024,127,"","f"],
+      ["Coraline",2009,125,"Laika","f"],["Lost in Translation",2003,119,"","f"],["ParaNorman",2012,108,"Laika"],["Downton Abbey: A New Era",2022,92],
+      ["Kubo and the Two Strings",2016,77,"Laika"],["Moonrise Kingdom",2012,68],["The Danish Girl",2015,64,"","f"],["Dallas Buyers Club",2013,55],
+      ["Phantom Thread",2017,48]]},
+    { id:"working-title", name:"Working Title Films", films:[
+      ["Les Misérables",2012,442,"","y"],["Notting Hill",1999,364,"","f"],["Bridget Jones's Diary",2001,282,"","f"],
+      ["Bridget Jones: The Edge of Reason",2004,263],["Bean",1997,251,"","f"],["Love Actually",2003,247],["Four Weddings and a Funeral",1994,246],
+      ["Bridget Jones's Baby",2016,212],["Burn After Reading",2008,164,"Focus Features"],["Johnny English Reborn",2011,160],
+      ["Darkest Hour",2017,150,"Focus Features","f"],["Atonement",2007,131,"Focus Features","y"],["About a Boy",2002,130,"","f"],
+      ["The Theory of Everything",2014,123,"Focus Features","y"],["Pride & Prejudice",2005,121,"Focus Features","y"],["Hot Fuzz",2007,81]]}
+  ]},
+  { id:"sony", name:"Sony Pictures", owner:"Sony Group", share:6.7, color:"#FF7A6B",
+    blurb:"Columbia, TriStar and Screen Gems, the Spider-Verse team, Sony Pictures Television and the Crunchyroll anime business. Sony owns no US TV networks.",
+    children:[
+    { id:"columbia", name:"Columbia Pictures", films:[
+      ["Spider-Man: No Way Home",2021,1923,"Marvel Studios"],["Spider-Man: Far From Home",2019,1132,"Marvel Studios"],
+      ["Jumanji: Welcome to the Jungle",2017,962],["Spider-Man 3",2007,895],["Spider-Man: Homecoming",2017,880,"Marvel Studios"],
+      ["Venom",2018,856,"","y"],["Spider-Man",2002,825,"","y"],["Jumanji: The Next Level",2019,801],["2012",2009,791,"","f"],["Spider-Man 2",2004,789],
+      ["The Da Vinci Code",2006,760,"","f"],["The Amazing Spider-Man",2012,758,"","f"],["The Amazing Spider-Man 2",2014,709],["Men in Black 3",2012,654],
+      ["Hancock",2008,629,"","f"],["Men in Black",1997,589,"Amblin","f"],["Venom: Let There Be Carnage",2021,507],["Angels & Demons",2009,485,"","f"],
+      ["Venom: The Last Dance",2024,478],["Bad Boys for Life",2020,426],["Uncharted",2022,407,"","f"],["Bad Boys: Ride or Die",2024,404],
+      ["Once Upon a Time in Hollywood",2019,377],["Ghostbusters",1984,296]]},
+    { id:"spa", name:"Sony Pictures Animation", films:[
+      ["Spider-Man: Across the Spider-Verse",2023,691],["The Smurfs",2011,564,"Columbia Pictures","f"],["Hotel Transylvania 3: Summer Vacation",2018,528],
+      ["Hotel Transylvania 2",2015,474],["Spider-Man: Into the Spider-Verse",2018,384],["Hotel Transylvania",2012,358,"","f"],
+      ["Peter Rabbit",2018,351,"Columbia Pictures","f"],["The Smurfs 2",2013,347,"Columbia Pictures"],["Cloudy with a Chance of Meatballs 2",2013,275],
+      ["Cloudy with a Chance of Meatballs",2009,243,"","f"],["The Emoji Movie",2017,217],["Surf's Up",2007,149,"","f"]]},
+    { id:"screen-gems", name:"Screen Gems", films:[
+      ["Resident Evil: The Final Chapter",2016,312,"Constantin Film"],["Resident Evil: Afterlife",2010,300,"Constantin Film"],
+      ["Resident Evil: Retribution",2012,240,"Constantin Film"],["Anyone but You",2023,220],["Don't Breathe",2016,157,"Stage 6 Films"],
+      ["Friends with Benefits",2011,150,"","f"],["Resident Evil: Extinction",2007,148,"Constantin Film"],["The Exorcism of Emily Rose",2005,145],
+      ["Think Like a Man",2012,96],["Underworld",2003,95,"Lakeshore Entertainment","y"],["Burlesque",2010,90,"","Burlesque (2010 American film)"],["Easy A",2010,75]]},
+    { id:"tristar", name:"TriStar Pictures", films:[
+      ["Terminator 2: Judgment Day",1991,520,"Carolco"],["Godzilla",1998,379,"","y"],["Basic Instinct",1992,352,"Carolco"],["Hook",1991,300,"Amblin","f"],
+      ["Elysium",2013,286,"","f"],["Jerry Maguire",1996,274],["Jumanji",1995,263],["Total Recall",1990,261,"Carolco","y"],
+      ["Sleepless in Seattle",1993,228],["Baby Driver",2017,227,"Working Title Films"],["Philadelphia",1993,207,"","f"]]},
+    { id:"spc", name:"Sony Pictures Classics", films:[
+      ["Crouching Tiger, Hidden Dragon",2000,214],["Midnight in Paris",2011,151],["Blue Jasmine",2013,99],["Capote",2005,50,"","f"],
+      ["Whiplash",2014,49,"","y"],["Still Alice",2014,44],["Call Me by Your Name",2017,41,"","f"],["Amour",2012,36,"","y"],
+      ["The Father",2020,36,"","y"],["An Education",2009,26]]}
+  ]},
+  { id:"lionsgate", name:"Lionsgate", owner:"Lionsgate Studios", share:3.9, color:"#FF9A52",
+    blurb:"The Hunger Games and John Wick, Twilight through Summit, Lionsgate Television, and in 2026 its biggest release yet, Michael.",
+    children:[
+    { id:"lionsgate-films", name:"Lionsgate Films", films:[
+      ["Michael",2026,977,"Universal (international)","y"],["The Hunger Games: Catching Fire",2013,865],["The Hunger Games: Mockingjay – Part 1",2014,755],
+      ["The Hunger Games",2012,695,"","f"],["The Hunger Games: Mockingjay – Part 2",2015,658],["John Wick: Chapter 4",2023,440],
+      ["The Hunger Games: The Ballad of Songbirds & Snakes",2023,337],["John Wick: Chapter 3 – Parabellum",2019,327],["The Expendables 2",2012,315],
+      ["Knives Out",2019,312],["Wonder",2017,306,"","f"],["The Expendables",2010,275,"","y"],["Fahrenheit 9/11",2004,222],
+      ["John Wick: Chapter 2",2017,171],["Saw II",2005,153],["Ballerina",2025,137,"","y"],["Saw",2004,103,"","y"],["John Wick",2014,86]]},
+    { id:"summit", name:"Summit Entertainment", films:[
+      ["The Twilight Saga: Breaking Dawn – Part 2",2012,830],["The Twilight Saga: Breaking Dawn – Part 1",2011,712],["The Twilight Saga: New Moon",2009,711],
+      ["The Twilight Saga: Eclipse",2010,698],["La La Land",2016,471],["Twilight",2008,393,"","y"],["Now You See Me",2013,351,"","f"],
+      ["Now You See Me 2",2016,334],["Insurgent",2015,297,"","f"],["Divergent",2014,289,"","f"],["Red",2010,199,"","y"],["Hacksaw Ridge",2016,180],
+      ["Allegiant",2016,179,"","f"],["The Hurt Locker",2008,49]]}
+  ]},
+  { id:"a24", name:"A24", owner:"Independent", share:2.8, color:"#E6DCC8",
+    blurb:"The independent studio behind Everything Everywhere All at Once, with a slate built on auteur horror and awards films. Several titles are US releases only.",
+    films:[
+      ["Everything Everywhere All at Once",2022,143],["Civil War",2024,127,"","y"],["Talk to Me",2023,92,"","Talk to Me (2022 film)"],
+      ["Hereditary",2018,82,"","f"],["Lady Bird",2017,79,"","f"],["Moonlight",2016,65,"","y"],["Heretic",2024,59,"","y"],["The Whale",2022,55,"","y"],
+      ["The Zone of Interest",2023,53,"","f"],["Uncut Gems",2019,50],["The Brutalist",2024,50],["Midsommar",2019,48],["The Iron Claw",2023,44,"","f"],
+      ["Past Lives",2023,42,"","f"],["The Witch",2015,40,"","y"],["Ex Machina",2015,37,"","f"],["Room",2015,36,"","y"]]},
+  { id:"amazon-mgm", name:"Amazon MGM", owner:"Amazon", share:1.6, color:"#6ED3B0",
+    blurb:"Amazon bought MGM in 2022, bringing James Bond, Rocky, Creed and the Orion library. Prime Video and MGM+ are its streaming side.",
+    children:[
+    { id:"mgm", name:"MGM", films:[
+      ["Skyfall",2012,1109,"Eon Productions, Columbia Pictures"],["Spectre",2015,880,"Eon Productions, Columbia Pictures","y"],
+      ["No Time to Die",2021,774,"Eon Productions, Universal"],["Casino Royale",2006,616,"Eon Productions, Columbia Pictures","y"],
+      ["Quantum of Solace",2008,590,"Eon Productions, Columbia Pictures"],["Die Another Day",2002,432,"Eon Productions"],
+      ["The World Is Not Enough",1999,362,"Eon Productions"],["GoldenEye",1995,356,"Eon Productions"],["Rain Man",1988,354,"United Artists"],
+      ["Tomorrow Never Dies",1997,333,"Eon Productions"],["Rocky IV",1985,300,"United Artists"],["Creed III",2023,276],["Creed II",2018,214],
+      ["The Addams Family",2019,204,"","y"],["Creed",2015,173,"Warner Bros.","f"],["House of Gucci",2021,154]]},
+    { id:"amazon-originals", name:"Amazon MGM Studios", films:[
+      ["Project Hail Mary",2026,683,"Sony Pictures (international)","f"],["Red One",2024,186,"","f"],["The Accountant 2",2025,103],
+      ["Challengers",2024,96,"","f"],["Air",2023,90,"","y"],["Manchester by the Sea",2016,79,"Roadside Attractions","f"],["Saltburn",2023,21,"","f"]]},
+    { id:"orion", name:"Orion Pictures", films:[
+      ["Dances with Wolves",1990,424],["The Silence of the Lambs",1991,273,"","f"],["Platoon",1986,138,"","f"],["Amadeus",1984,90,"","f"],
+      ["The Terminator",1984,78,"Hemdale"],["Child's Play",2019,45,"","y"],["American Fiction",2023,23]]}
+  ]},
+  { id:"neon", name:"Neon", owner:"Independent", share:1.3, color:"#FF5FA8",
+    blurb:"The US home of Parasite and a run of Palme d'Or winners. Worldwide figures include releases outside North America handled by other distributors.",
+    films:[
+      ["Parasite",2019,262,"CJ Entertainment (outside North America)","y"],["Longlegs",2024,127],["The Monkey",2025,68,"","y"],["Anora",2024,57],
+      ["I, Tonya",2017,54],["Anatomy of a Fall",2023,36],["Spencer",2021,21,"","f"]]},
+  { id:"other", name:"Everyone else", owner:"Not mapped", share:9.4, color:"#EAF2FB", inert:true,
+    blurb:"Angel Studios, smaller independents and foreign-language releases." }
+]};
+
+/* ======================= EXPANSION: MORE FILM LABELS, TV AND STREAMING =======================
+   shows: [title, first year, IMDb user ratings in thousands (approx.), note, wiki hint]
+   wiki hint for shows: "s" = "Title (TV series)", "y" = "Title (YEAR TV series)", "a" = "Title (American TV series)" */
+const EXTRA_FILM = {
+  disney:[
+    { id:"bluesky", name:"Blue Sky Studios", blurb:"Disney's Ice Age animation house, closed in 2021. Its films now sit in the 20th Century library.", films:[
+      ["Ice Age: Dawn of the Dinosaurs",2009,887,"20th Century Fox (distributor)"],["Ice Age: Continental Drift",2012,877,"20th Century Fox (distributor)"],
+      ["Ice Age: The Meltdown",2006,660,"20th Century Fox (distributor)"],["Rio 2",2014,500,"20th Century Fox (distributor)"],["Rio",2011,484,"20th Century Fox (distributor)","y"],
+      ["Ice Age: Collision Course",2016,408,"20th Century Fox (distributor)"],["Ice Age",2002,383,"20th Century Fox (distributor)","y"],
+      ["Horton Hears a Who!",2008,297,"20th Century Fox (distributor)","f"],["Ferdinand",2017,296,"20th Century Fox (distributor)","f"],
+      ["Epic",2013,268,"20th Century Fox (distributor)","y"],["Robots",2005,260,"20th Century Fox (distributor)","y"],["The Peanuts Movie",2015,246,"20th Century Fox (distributor)"]]},
+    { id:"touchstone", name:"Touchstone Pictures", blurb:"Disney's adult-skewing label from 1984 until it went dormant in 2016.", films:[
+      ["Armageddon",1998,553,"Jerry Bruckheimer Films","y"],["Pretty Woman",1990,463],["Pearl Harbor",2001,449,"","f"],["Signs",2002,408,"","f"],
+      ["Who Framed Roger Rabbit",1988,351,"Amblin"],["Ransom",1996,309,"","y"],["Enemy of the State",1998,250,"","f"],["Unbreakable",2000,248,"","f"],
+      ["Gone in 60 Seconds",2000,237,"","y"],["Sister Act",1992,231],["Con Air",1997,224]]},
+    { id:"hollywood-pictures", name:"Hollywood Pictures", blurb:"A second Disney adult label, active from 1989 to 2007.", films:[
+      ["The Sixth Sense",1999,673],["The Rock",1996,335,"Jerry Bruckheimer Films","f"],["While You Were Sleeping",1995,182,"","f"],
+      ["Evita",1996,141,"","y"],["Mr. Holland's Opus",1995,106],["Arachnophobia",1990,53,"Amblin"]]}
+  ],
+  paramount:[
+    { id:"miramax", name:"Miramax", owner:"Paramount owns 49%", blurb:"Paramount holds a 49% stake in Miramax and distributes its library, including the old Dimension Films titles.", films:[
+      ["Chicago",2002,307,"","y"],["Shakespeare in Love",1998,289],["Scary Movie",2000,278,"Dimension Films"],["The English Patient",1996,232,"","f"],
+      ["Life Is Beautiful",1997,230,"Melampo Cinematografica"],["Good Will Hunting",1997,225],["Pulp Fiction",1994,214],["Gangs of New York",2002,194],
+      ["Kill Bill: Volume 1",2003,180],["Scream",1996,173,"Dimension Films","y"],["Cold Mountain",2003,173,"","f"],["Chocolat",2000,152,"","y"],
+      ["The Gentlemen",2019,115,"","y"]]}
+  ],
+  wb:[
+    { id:"castle-rock", name:"Castle Rock Entertainment", blurb:"Rob Reiner's company, owned by Warner Bros. since the Turner merger. Several early films were released by Columbia.", films:[
+      ["The Green Mile",1999,287,"","f"],["A Few Good Men",1992,243,"Columbia Pictures (distributor)"],["Miss Congeniality",2000,212,"","f"],
+      ["In the Line of Fire",1993,187,"Columbia Pictures (distributor)"],["City Slickers",1991,179,"Columbia Pictures (distributor)"],
+      ["The American President",1995,108,"Columbia Pictures (distributor)"],["When Harry Met Sally...",1989,93,"Columbia Pictures (distributor)"],
+      ["The Shawshank Redemption",1994,73,"Columbia Pictures (distributor)"],["Misery",1990,61,"Columbia Pictures (distributor)","f"],
+      ["Stand by Me",1986,52,"Columbia Pictures (distributor)","f"]]}
+  ],
+  sony:[
+    { id:"aniplex", name:"Aniplex", owner:"Sony Music Entertainment Japan", blurb:"Sony's Japanese anime producer, behind Demon Slayer. Crunchyroll handles releases outside Japan.", films:[
+      ["Demon Slayer: Kimetsu no Yaiba – The Movie: Infinity Castle",2025,779,"Toho (Japan), Crunchyroll (overseas)"],
+      ["Demon Slayer: Kimetsu no Yaiba – The Movie: Mugen Train",2020,507,"Toho (Japan)"]]}
+  ]
+};
+
+const TV = {
+  disney:[
+    { id:"disney-plus", name:"Disney+", films:[
+      ["The Mandalorian",2019,650],["WandaVision",2021,400],["Loki",2021,400,"","s"],["The Falcon and the Winter Soldier",2021,270],["Moon Knight",2022,260,"","s"],
+      ["Andor",2022,250,"","s"],["Obi-Wan Kenobi",2022,230,"","s"],["Hawkeye",2021,220,"","Hawkeye (2021 TV series)"],["The Book of Boba Fett",2021,210],
+      ["She-Hulk: Attorney at Law",2022,210],["Ms. Marvel",2022,140,"","s"],["Ahsoka",2023,120,"","s"],["Secret Invasion",2023,110,"","s"],
+      ["Agatha All Along",2024,80],["Daredevil: Born Again",2025,80],["Percy Jackson and the Olympians",2023,70,"","s"],["Star Wars: Skeleton Crew",2024,50]]},
+    { id:"hulu", name:"Hulu", films:[
+      ["The Handmaid's Tale",2017,260,"produced by MGM Television","s"],["Only Murders in the Building",2021,190],["Normal People",2020,110,"with BBC Three","s"],
+      ["Dopesick",2021,90,"","s"],["The Great",2020,90,"","s"],["Nine Perfect Strangers",2021,90],["Little Fires Everywhere",2020,75,"","s"],["Paradise",2025,70,"","y"],
+      ["Castle Rock",2018,60,"","s"],["The Dropout",2022,60],["The Act",2019,50,"","s"],["Pam & Tommy",2022,45],["Solar Opposites",2020,45],["Tell Me Lies",2022,35,"","s"]]},
+    { id:"abc", name:"ABC", films:[
+      ["Lost",2004,600,"","s"],["Modern Family",2009,490,"produced by 20th Television"],["Grey's Anatomy",2005,340],["How to Get Away with Murder",2014,160],
+      ["Once Upon a Time",2011,260,"","s"],["Agents of S.H.I.E.L.D.",2013,230],["Twin Peaks",1990,230],["Castle",2009,170,"","s"],["Desperate Housewives",2004,150],
+      ["The Good Doctor",2017,120,"produced by Sony Pictures Television","a"],["Revenge",2011,120,"","s"],["Designated Survivor",2016,110,"produced by eOne, now Lionsgate","s"],
+      ["Scandal",2012,95,"","s"],["Abbott Elementary",2021,70,"produced by Warner Bros. Television"],["The Rookie",2018,70,"with eOne, now Lionsgate","s"],
+      ["Boy Meets World",1993,70],["Home Improvement",1991,65,"","s"],["The Wonder Years",1988,65],["Ugly Betty",2006,45],["Nashville",2012,25,"produced by Lionsgate Television","y"],
+      ["Shark Tank",2009,25,"produced by Sony Pictures Television"]]},
+    { id:"abc-news", name:"ABC News", films:[
+      ["The View",1997,6,"","s"],["Good Morning America",1975,3],["20/20",1978,3,"","s"],["Nightline",1980,2],["ABC World News Tonight",1953,1]]},
+    { id:"espn", name:"ESPN", films:[
+      ["The Last Dance",2020,140,"with Netflix (outside US)","s"],["O.J.: Made in America",2016,25],["30 for 30",2009,15],["SportsCenter",1979,6],
+      ["Monday Night Football",1970,3],["Pardon the Interruption",2001,2],["College GameDay",1987,1.5,"","College GameDay (football TV program)"],["First Take",2007,1.5,"","s"]]},
+    { id:"fx", name:"FX", films:[
+      ["Fargo",2014,430,"produced by MGM Television","s"],["American Horror Story",2011,340],["Sons of Anarchy",2008,320],["The Bear",2022,300,"streams on Hulu","s"],
+      ["It's Always Sunny in Philadelphia",2005,270],["Shōgun",2024,240,"streams on Hulu","y"],["What We Do in the Shadows",2019,180,"","s"],["Archer",2009,170,"","y"],
+      ["Justified",2010,120,"produced by Sony Pictures Television","s"],["Legion",2017,120,"","s"],["The Americans",2013,110,"","y"],["Atlanta",2016,100,"","s"],
+      ["American Crime Story",2016,100],["The Shield",2002,70],["Nip/Tuck",2003,70],["Snowfall",2017,50,"","s"],["Anger Management",2012,40,"produced by Lionsgate Television","s"],
+      ["Reservation Dogs",2021,40]]},
+    { id:"natgeo", name:"National Geographic", owner:"Disney owns 73%", films:[
+      ["Cosmos: A Spacetime Odyssey",2014,140,"first aired on Fox"],["Genius",2017,40,"","a"],["Mars",2016,20,"","s"],["The Hot Zone",2019,20,"","s"],
+      ["A Small Light",2023,20],["Limitless with Chris Hemsworth",2022,15],["Brain Games",2011,12,"","s"],["Welcome to Earth",2021,10],["Life Below Zero",2013,8]]},
+    { id:"disney-channel", name:"Disney Channel", films:[
+      ["Gravity Falls",2012,140],["High School Musical",2006,120,"Disney Channel Original Movie"],["Hannah Montana",2006,100],["Wizards of Waverly Place",2007,80],
+      ["Phineas and Ferb",2007,80],["Camp Rock",2008,60],["The Suite Life of Zack & Cody",2005,60],["Lizzie McGuire",2001,45],["Kim Possible",2002,45],
+      ["Descendants",2015,45,"Disney Channel Original Movie","y"],["That's So Raven",2003,40],["Good Luck Charlie",2010,40],["The Owl House",2020,40,"","s"],
+      ["Austin & Ally",2011,35],["Even Stevens",2000,20]]},
+    { id:"disney-junior", name:"Disney Junior", films:[
+      ["Mickey Mouse Clubhouse",2006,12],["Doc McStuffins",2012,6],["Sofia the First",2012,6],["The Lion Guard",2015,5],["Jake and the Never Land Pirates",2011,4],
+      ["Handy Manny",2006,3],["Vampirina",2017,3],["Elena of Avalor",2016,3],["Spidey and His Amazing Friends",2021,2],["Puppy Dog Pals",2017,2]]},
+    { id:"freeform", name:"Freeform", films:[
+      ["Pretty Little Liars",2010,180,"produced by Warner Bros. Television","s"],["Shadowhunters",2016,70],["Kyle XY",2006,40,"as ABC Family"],["The Fosters",2013,40,"","y"],
+      ["Cloak & Dagger",2018,35,"","s"],["Switched at Birth",2011,35,"","s"],["The Bold Type",2017,30],["The Secret Life of the American Teenager",2008,25,"as ABC Family"],
+      ["Motherland: Fort Salem",2020,20],["Greek",2007,20,"as ABC Family","s"],["Grown-ish",2018,15],["Good Trouble",2019,15,"","s"]]},
+    { id:"20th-tv", name:"20th Television", films:[
+      ["Prison Break",2005,600,"aired on Fox"],["The Simpsons",1989,430,"aired on Fox"],["Family Guy",1999,380,"aired on Fox"],
+      ["Arrested Development",2003,330,"aired on Fox, then Netflix"],["Futurama",1999,300,"aired on Fox, then Comedy Central and Hulu"],["The X-Files",1993,240,"aired on Fox"],
+      ["24",2001,220,"aired on Fox","s"],["Buffy the Vampire Slayer",1997,190,"aired on The WB and UPN"],["Glee",2009,160,"aired on Fox","s"],
+      ["Malcolm in the Middle",2000,160,"aired on Fox"],["American Dad!",2005,160,"aired on Fox, then TBS"],["Bob's Burgers",2011,120,"aired on Fox"],
+      ["King of the Hill",1997,100,"aired on Fox, now Hulu"]]}
+  ],
+  paramount:[
+    { id:"cbs", name:"CBS", films:[
+      ["The Big Bang Theory",2007,870,"produced by Warner Bros. Television"],["How I Met Your Mother",2005,770,"produced by 20th Television"],
+      ["Two and a Half Men",2003,280,"produced by Warner Bros. Television"],["Criminal Minds",2005,230],["NCIS",2003,190,"","s"],
+      ["The Mentalist",2008,190,"produced by Warner Bros. Television"],["Person of Interest",2011,190,"produced by Warner Bros. Television","s"],
+      ["Everybody Loves Raymond",1996,140],["Young Sheldon",2017,130,"produced by Warner Bros. Television"],["CSI: Crime Scene Investigation",2000,110],
+      ["Hawaii Five-0",2010,90,"","Hawaii Five-0 (2010 TV series)"],["M*A*S*H",1972,80,"produced by 20th Television","s"],["The Good Wife",2009,80],
+      ["Blue Bloods",2010,70],["NCIS: Los Angeles",2009,70],["Mom",2013,50,"produced by Warner Bros. Television","s"],["Ghosts",2021,45,"","y"],
+      ["Survivor",2000,40,"produced by MGM Television","a"],["Tracker",2024,20,"","a"]]},
+    { id:"cbs-news", name:"CBS News", films:[
+      ["60 Minutes",1968,10],["48 Hours",1988,3,"","s"],["CBS Evening News",1948,1],["CBS Sunday Morning",1979,1],["Face the Nation",1954,1]]},
+    { id:"paramount-plus", name:"Paramount+", films:[
+      ["Star Trek: Discovery",2017,130],["1883",2021,120,"","s"],["Star Trek: Picard",2020,100],["Tulsa King",2022,70],["Halo",2022,60,"","s"],["1923",2022,60,"","s"],
+      ["Star Trek: Strange New Worlds",2022,60],["Landman",2024,60,"","s"],["Evil",2019,45,"began on CBS","s"],["Mayor of Kingstown",2021,40],["Lioness",2023,30,"","s"],
+      ["The Good Fight",2017,30]]},
+    { id:"showtime", name:"Showtime", films:[
+      ["Dexter",2006,790,"","s"],["Homeland",2011,360,"produced by 20th Television"],["Shameless",2011,260,"produced by Warner Bros. Television","a"],
+      ["Californication",2007,180,"","s"],["Stargate SG-1",1997,130,"produced by MGM Television; later on Syfy"],["Penny Dreadful",2014,120,"","s"],
+      ["Weeds",2005,110,"produced by Lionsgate Television","s"],["Dexter: New Blood",2021,100],["Billions",2016,100],["Ray Donovan",2013,100],
+      ["Yellowjackets",2021,90,"produced by Lionsgate Television","s"],["The Affair",2014,50,"","s"],["Masters of Sex",2013,50],
+      ["Nurse Jackie",2009,40,"produced by Lionsgate Television"],["The Chi",2018,15]]},
+    { id:"nickelodeon", name:"Nickelodeon", films:[
+      ["Avatar: The Last Airbender",2005,390],["The Legend of Korra",2012,150],["SpongeBob SquarePants",1999,120],["Drake & Josh",2004,75],
+      ["The Fairly OddParents",2001,65],["Rugrats",1991,60],["iCarly",2007,55],["Hey Arnold!",1996,50],["Victorious",2010,50],["Danny Phantom",2004,45],
+      ["Invader Zim",2001,45],["Zoey 101",2005,30],["Kenan & Kel",1996,25],["The Adventures of Jimmy Neutron, Boy Genius",2002,25],["The Loud House",2016,15],
+      ["Dora the Explorer",2000,12],["All That",1994,12]]},
+    { id:"mtv", name:"MTV", films:[
+      ["Teen Wolf",2011,170,"produced by MGM Television","y"],["Beavis and Butt-Head",1993,55],["Jackass",2000,40,"","s"],["Awkward",2011,40,"","s"],
+      ["Daria",1997,30],["Jersey Shore",2009,25,"","s"],["Pimp My Ride",2004,15],["Catfish: The TV Show",2012,12],["Ridiculousness",2011,8,"","s"],
+      ["The Hills",2006,8,"","s"],["The Real World",1992,5,"","s"],["Teen Mom",2009,4,"","s"]]},
+    { id:"comedy-central", name:"Comedy Central", films:[
+      ["South Park",1997,410],["Chappelle's Show",2003,70],["Workaholics",2011,70],["Key & Peele",2012,60],["The Daily Show",1996,55],["Broad City",2014,45],
+      ["The Colbert Report",2005,40],["Tosh.0",2009,35],["Nathan for You",2013,25],["Reno 911!",2003,25],["Drunk History",2013,15,"","a"],
+      ["Inside Amy Schumer",2013,15],["Review",2014,10,"","s"]]},
+    { id:"bet", name:"BET", films:[
+      ["The Game",2006,12,"began on The CW","s"],["Being Mary Jane",2013,6],["Tyler Perry's Sistas",2019,4],["The Oval",2019,3,"","s"],["106 & Park",2000,1]]},
+    { id:"paramount-network", name:"Paramount Network", films:[
+      ["Yellowstone",2018,270,"","a"],["Waco",2018,30,"","s"],["Lip Sync Battle",2015,8],["Bar Rescue",2011,7],["Ink Master",2012,6]]},
+    { id:"paramount-tv-studios", name:"CBS Studios and Paramount Television", films:[
+      ["13 Reasons Why",2017,320,"aired on Netflix"],["Star Trek: The Next Generation",1987,160,"first-run syndication"],
+      ["Dead to Me",2019,120,"aired on Netflix","s"],["Star Trek",1966,110,"aired on NBC","Star Trek: The Original Series"],
+      ["Star Trek: Deep Space Nine",1993,80,"first-run syndication"],["Star Trek: Voyager",1995,70,"aired on UPN"],["Star Trek: Enterprise",2001,60,"aired on UPN"],
+      ["Grace and Frankie",2015,50,"aired on Netflix, with Skydance Television"],["Cheers",1982,70,"aired on NBC"],["Frasier",1993,110,"aired on NBC"],
+      ["Judge Judy",1996,6,"syndication"],["Entertainment Tonight",1981,2,"syndication"]]}
+  ],
+  wb:[
+    { id:"hbo", name:"HBO", films:[
+      ["Game of Thrones",2011,2400],["Chernobyl",2019,900,"with Sky","s"],["True Detective",2014,680],["The Last of Us",2023,650,"with Sony Pictures Television","s"],
+      ["Band of Brothers",2001,560,"","s"],["Westworld",2016,540,"produced by Warner Bros. Television","s"],["House of the Dragon",2022,500],["The Sopranos",1999,500],
+      ["The Wire",2002,390],["Silicon Valley",2014,320,"","s"],["Succession",2018,290,"","s"],["Euphoria",2019,280,"with A24","a"],["Boardwalk Empire",2010,220],
+      ["Big Little Lies",2017,210,"","s"],["Rome",2005,180,"with BBC","s"],["The White Lotus",2021,170],["Curb Your Enthusiasm",2000,160],
+      ["Sex and the City",1998,150],["Barry",2018,140,"","s"],["Watchmen",2019,140,"","s"],["The Penguin",2024,130,"","s"],["Six Feet Under",2001,130,"","s"],
+      ["The Newsroom",2012,130,"","a"],["Deadwood",2004,120,"","s"],["Veep",2012,110]]},
+    { id:"hbo-max", name:"HBO Max", films:[
+      ["Peacemaker",2022,200,"","s"],["Titans",2018,120,"began on DC Universe","s"],["The Pitt",2025,90],["Doom Patrol",2019,70,"","s"],["Hacks",2021,60,"","s"],
+      ["The Flight Attendant",2020,60],["Our Flag Means Death",2022,60],["Harley Quinn",2019,50,"","s"],["Station Eleven",2021,50,"","s"],
+      ["And Just Like That...",2021,40],["Tokyo Vice",2022,35,"","s"],["The Sex Lives of College Girls",2021,30]]},
+    { id:"cnn", name:"CNN", films:[
+      ["Anthony Bourdain: Parts Unknown",2013,25],["Larry King Live",1985,3],["Anderson Cooper 360°",2003,1],["The Situation Room with Wolf Blitzer",2005,1]]},
+    { id:"tnt", name:"TNT", films:[
+      ["Falling Skies",2011,100],["Snowpiercer",2020,75,"","s"],["The Last Ship",2014,70,"","s"],["Leverage",2008,70,"","s"],["Rizzoli & Isles",2010,60],
+      ["Animal Kingdom",2016,50,"","s"],["The Closer",2005,40],["Southland",2009,25,"began on NBC","s"],["Major Crimes",2012,20],["Claws",2017,15,"","s"],
+      ["Inside the NBA",1989,4]]},
+    { id:"tbs", name:"TBS", films:[
+      ["Miracle Workers",2019,30,"","s"],["Search Party",2016,20,"","s"],["Angie Tribeca",2016,15],["Conan",2010,10,"","Conan (talk show)"],
+      ["The Last O.G.",2018,10],["My Boys",2006,10],["Wrecked",2016,10,"","s"],["Tyler Perry's House of Payne",2006,8,"later on BET"],["Full Frontal with Samantha Bee",2016,5]]},
+    { id:"discovery", name:"Discovery", films:[
+      ["Planet Earth",2006,220,"with BBC","Planet Earth (2006 TV series)"],["MythBusters",2003,50],["Man vs. Wild",2006,35],["Deadliest Catch",2005,20],
+      ["How It's Made",2001,15,"on Science Channel"],["Dirty Jobs",2005,15],["Gold Rush",2010,10,"","s"],["Naked and Afraid",2013,8],["Fast N' Loud",2012,8],
+      ["Street Outlaws",2013,5],["Shark Week",1988,3]]},
+    { id:"hgtv", name:"HGTV", films:[
+      ["Fixer Upper",2013,8,"","s"],["Property Brothers",2011,7],["House Hunters",1999,6],["Flip or Flop",2013,4],["Good Bones",2016,3],["Home Town",2016,3,"","s"]]},
+    { id:"food-network", name:"Food Network", films:[
+      ["Chopped",2009,12,"","s"],["Good Eats",1999,10],["Diners, Drive-Ins and Dives",2006,8],["Iron Chef America",2005,5],["Cutthroat Kitchen",2013,5],
+      ["Beat Bobby Flay",2013,3],["Guy's Grocery Games",2013,3],["Barefoot Contessa",2002,3],["Kids Baking Championship",2015,2]]},
+    { id:"tlc", name:"TLC", films:[
+      ["My 600-lb Life",2012,7],["90 Day Fiancé",2014,6],["Cake Boss",2009,6],["Here Comes Honey Boo Boo",2012,5],["Say Yes to the Dress",2007,4],
+      ["Sister Wives",2010,4],["Jon & Kate Plus 8",2007,3],["Little People, Big World",2006,3],["Toddlers & Tiaras",2009,3],["What Not to Wear",2003,3,"","a"]]},
+    { id:"id", name:"Investigation Discovery", films:[
+      ["Quiet on Set: The Dark Side of Kids TV",2024,30],["Homicide Hunter",2011,5],["Deadly Women",2005,3],["Disappeared",2009,2,"","s"],["Evil Lives Here",2016,2]]},
+    { id:"animal-planet", name:"Animal Planet", films:[
+      ["The Crocodile Hunter",1996,15],["River Monsters",2009,8],["Pit Bulls & Parolees",2009,3],["Finding Bigfoot",2011,3],["Tanked",2011,2,"","s"]]},
+    { id:"cartoon-network", name:"Cartoon Network", films:[
+      ["Adventure Time",2010,110],["Regular Show",2010,100],["The Amazing World of Gumball",2011,70],["Ed, Edd n Eddy",1999,70],["Dexter's Laboratory",1996,60],
+      ["Courage the Cowardly Dog",1999,60],["Steven Universe",2013,60],["Samurai Jack",2001,60],["Teen Titans",2003,60,"","s"],["Over the Garden Wall",2014,60],
+      ["The Powerpuff Girls",1998,55],["Ben 10",2005,45,"","Ben 10 (2005 TV series)"],["Foster's Home for Imaginary Friends",2004,45],["Codename: Kids Next Door",2002,40],
+      ["Johnny Bravo",1997,40]]},
+    { id:"adult-swim", name:"Adult Swim", films:[
+      ["Rick and Morty",2013,620],["Robot Chicken",2005,70],["The Boondocks",2005,70,"","s"],["Primal",2019,50,"","s"],["Smiling Friends",2020,40],
+      ["Aqua Teen Hunger Force",2000,30],["The Venture Bros.",2003,30],["Metalocalypse",2006,20],["Tim and Eric Awesome Show, Great Job!",2007,20],
+      ["Superjail!",2007,15],["Harvey Birdman, Attorney at Law",2000,10],["Squidbillies",2005,8],["Space Ghost Coast to Coast",1994,8]]},
+    { id:"wbtv", name:"Warner Bros. Television", films:[
+      ["Supernatural",2005,490,"aired on The WB and The CW","a"],["Arrow",2012,450,"aired on The CW","s"],["Ted Lasso",2020,380,"aired on Apple TV+"],
+      ["Lucifer",2016,380,"aired on Fox, then Netflix","s"],["The Flash",2014,370,"aired on The CW","The Flash (2014 TV series)"],
+      ["The Vampire Diaries",2009,350,"aired on The CW"],["You",2018,300,"aired on Lifetime, then Netflix","s"],["Gilmore Girls",2000,250,"aired on The WB and The CW"],
+      ["Gotham",2014,250,"aired on Fox","s"],["Gossip Girl",2007,220,"aired on The CW"],["Smallville",2001,200,"aired on The WB and The CW"],
+      ["Riverdale",2017,170,"aired on The CW","y"],["The O.C.",2003,120,"aired on Fox"],["One Tree Hill",2003,120,"aired on The WB and The CW","s"],
+      ["Dawson's Creek",1998,80,"aired on The WB"],["Shrinking",2023,60,"aired on Apple TV+","s"]]}
+  ],
+  universal:[
+    { id:"nbc", name:"NBC", films:[
+      ["Friends",1994,1100,"produced by Warner Bros. Television"],["The Office",2005,750,"","The Office (American TV series)"],
+      ["Seinfeld",1989,360,"produced by Castle Rock Entertainment"],["Brooklyn Nine-Nine",2013,360,"began on Fox"],["Parks and Recreation",2009,290],
+      ["Hannibal",2013,290,"","s"],["Community",2009,280,"produced by Sony Pictures Television","s"],["Scrubs",2001,280,"produced by ABC Signature; later on ABC","s"],
+      ["The Blacklist",2013,270,"produced by Sony Pictures Television","s"],["Heroes",2006,240,"","Heroes (American TV series)"],["The Good Place",2016,210],
+      ["ER",1994,170,"produced by Warner Bros. Television","s"],["This Is Us",2016,160,"produced by 20th Television"],["30 Rock",2006,160],
+      ["The Fresh Prince of Bel-Air",1990,150],["Law & Order: Special Victims Unit",1999,140],["The West Wing",1999,110,"produced by Warner Bros. Television"],
+      ["Will & Grace",1998,80],["Chicago Fire",2012,80,"","s"],["Superstore",2015,70,"","s"],["Saturday Night Live",1975,60]]},
+    { id:"nbc-news", name:"NBC News", films:[
+      ["Dateline NBC",1992,5],["Today",1952,4,"","Today (American TV program)"],["Meet the Press",1947,2],["NBC Nightly News",1970,1]]},
+    { id:"nbc-sports", name:"NBC Sports", films:[
+      ["NBC Sunday Night Football",2006,3],["Football Night in America",2006,1]]},
+    { id:"peacock", name:"Peacock", films:[
+      ["Poker Face",2023,70],["Ted",2024,60,"","s"],["The Day of the Jackal",2024,60,"with Sky","s"],["Twisted Metal",2023,50,"produced by Sony Pictures Television","s"],
+      ["Dr. Death",2021,40,"","s"],["Bel-Air",2022,30,"","s"],["Those About to Die",2024,20],["Mrs. Davis",2023,15],
+      ["The Traitors",2023,10,"","The Traitors (American TV series)"],["Love Island USA",2019,8,"began on CBS","Love Island (American TV series)"]]},
+    { id:"bravo", name:"Bravo", films:[
+      ["Dirty John",2018,30,"","s"],["Top Chef",2006,20],["Project Runway",2004,15],["Vanderpump Rules",2013,6],["Queer Eye for the Straight Guy",2003,6],
+      ["Below Deck",2013,5],["The Real Housewives of Atlanta",2008,4],["The Real Housewives of New York City",2008,4],["Watch What Happens Live with Andy Cohen",2009,4],
+      ["Southern Charm",2014,3]]},
+    { id:"telemundo", name:"Telemundo", films:[
+      ["La Reina del Sur",2011,10,"","s"],["Pasión de gavilanes",2003,10,"with Caracol"],["El Señor de los Cielos",2013,6],["Señora Acero",2014,2],["Betty en NY",2019,2]]},
+    { id:"sky", name:"Sky", owner:"Comcast's UK and European broadcaster", films:[
+      ["The Young Pope",2016,60,"with HBO and Canal+"],["Babylon Berlin",2017,50,"with ARD"],["Gangs of London",2020,50,"","s"],["Fortitude",2015,30,"","s"],
+      ["Riviera",2017,15,"","s"],["Brassic",2019,15],["Save Me",2018,10,"","s"],["Temple",2019,10,"","s"],["Domina",2021,10,"","s"]]},
+    { id:"universal-television", name:"Universal Television", films:[
+      ["House",2004,500,"aired on Fox"],["Suits",2011,500,"aired on USA Network","a"],["Mr. Robot",2015,420,"aired on USA Network"],
+      ["The Umbrella Academy",2019,300,"aired on Netflix","s"],["Battlestar Galactica",2004,300,"aired on Syfy","Battlestar Galactica (2004 TV series)"],
+      ["Psych",2006,120,"aired on USA Network"],["Russian Doll",2019,110,"aired on Netflix","s"],["Monk",2002,90,"aired on USA Network","s"]]}
+  ],
+  sony:[
+    { id:"sony-pictures-tv", name:"Sony Pictures Television", films:[
+      ["Breaking Bad",2008,2300,"aired on AMC"],["Better Call Saul",2015,700,"aired on AMC"],["The Crown",2016,270,"aired on Netflix, with Left Bank Pictures","s"],
+      ["Cobra Kai",2018,230,"aired on YouTube, then Netflix"],["Outlander",2014,200,"aired on Starz","s"],["The Night Agent",2023,120,"aired on Netflix"],
+      ["Married... with Children",1987,90,"aired on Fox"],["Jeopardy!",1984,15,"syndication"],["Wheel of Fortune",1975,10,"syndication","a"]]},
+    { id:"crunchyroll", name:"Crunchyroll", blurb:"Sony's anime streamer. Shows listed are produced by Sony's Aniplex and stream on Crunchyroll outside Japan.", films:[
+      ["Fullmetal Alchemist: Brotherhood",2009,230,"Aniplex, with Bones"],["Demon Slayer: Kimetsu no Yaiba",2019,200,"Aniplex, with ufotable"],
+      ["Sword Art Online",2012,140,"Aniplex, with A-1 Pictures"],["Solo Leveling",2024,70,"Aniplex, with A-1 Pictures","s"],["Erased",2016,60,"Aniplex, with A-1 Pictures","s"],
+      ["Your Lie in April",2014,50,"Aniplex, with A-1 Pictures"],["Fate/Zero",2011,40,"Aniplex, with ufotable"],["Kaguya-sama: Love Is War",2019,30,"Aniplex, with A-1 Pictures"]]}
+  ],
+  lionsgate:[
+    { id:"lionsgate-tv", name:"Lionsgate Television", blurb:"Lionsgate's TV studio, including eOne since 2023. Starz split off as its own company in 2025.", films:[
+      ["Orange Is the New Black",2013,330,"aired on Netflix"],["Mad Men",2007,290,"aired on AMC"],["Hell on Wheels",2011,70,"aired on AMC, produced by eOne"],
+      ["Dear White People",2017,35,"aired on Netflix","s"]]}
+  ],
+  "amazon-mgm":[
+    { id:"prime-video", name:"Prime Video", films:[
+      ["The Boys",2019,800,"produced by Sony Pictures Television","s"],["Fallout",2024,400,"with Kilter Films","s"],
+      ["The Lord of the Rings: The Rings of Power",2022,400],["Invincible",2021,350,"with Skybound","s"],["The Expanse",2015,260,"began on Syfy","s"],
+      ["Reacher",2022,280,"with Skydance Television and Paramount Television","s"],["Fleabag",2016,280,"with BBC Three"],["Good Omens",2019,180,"with BBC Studios","s"],
+      ["Jack Ryan",2018,160,"with Paramount Television and Skydance Television","s"],["The Wheel of Time",2021,130,"","s"],["The Marvelous Mrs. Maisel",2017,120],
+      ["The Man in the High Castle",2015,120,"","s"],["Bosch",2014,90,"","s"],["Gen V",2023,80],["Upload",2020,80,"","s"],["Citadel",2023,60,"","s"],
+      ["Mr. & Mrs. Smith",2024,50,"","y"],["Hazbin Hotel",2024,40]]},
+    { id:"mgm-plus", name:"MGM+", films:[
+      ["From",2022,80,"","s"],["War of the Worlds",2019,20,"as Epix","y"],["Godfather of Harlem",2019,15,"as Epix"],["Get Shorty",2017,15,"as Epix","s"],
+      ["Billy the Kid",2022,15,"","s"],["Chapelwaite",2021,10]]},
+    { id:"mgm-tv", name:"MGM Television", films:[
+      ["Vikings",2013,590,"aired on History","s"],["Wednesday",2022,450,"aired on Netflix","s"],["Vikings: Valhalla",2022,90,"aired on Netflix"],
+      ["Stargate Atlantis",2004,80,"aired on Syfy"]]}
+  ]
+};
+
+const DIVISION_NAMES = Object.fromEntries(["disney","paramount","wb","universal","sony","amazon-mgm"].map(k => [k, ["Film","TV and streaming"]]));
+(function restructure(){
+  const find = (n, id) => n.id === id ? n : (n.children || []).reduce((a, c) => a || find(c, id), null);
+  const twentieth = find(ROOT, "20th");
+  twentieth.films = twentieth.films.filter(f => !/^Ice Age/.test(f[0]));
+  Object.entries(DIVISION_NAMES).forEach(([id, [fn, tn]]) => {
+    const n = find(ROOT, id);
+    const film = { id:id + "-film", name:fn, division:true, children:n.children.concat(EXTRA_FILM[id] || []) };
+    const tv = { id:id + "-tv", name:tn, kind:"tv", division:true, children:TV[id] };
+    n.children = [film, tv];
+  });
+  const lg = find(ROOT, "lionsgate");
+  lg.children = [{ id:"lionsgate-film", name:"Film", division:true, children:lg.children }, Object.assign(TV.lionsgate[0], { kind:"tv" })];
+})();
+
+
+/* ======================= PREP ======================= */
+const BY_ID = new Map();
+const tint = (c, t) => d3.interpolateRgb(c, "#ffffff")(t);
+function prep(n, parent, depth, color){
+  n.parent = parent; n.depth = depth; n.color = n.color || color; BY_ID.set(n.id, n);
+  n.kind = n.kind || (parent && parent.kind) || "film";
+  if (n.children){
+    n.children.forEach((c, i) => prep(c, n, depth + 1, c.color || tint(n.color, .04 + (i % 6) * .075)));
+    n.allFilms = n.children.flatMap(c => c.allFilms);
+    n.leaves = n.children.flatMap(c => c.children ? c.leaves : (c.films ? [c] : []));
+  } else if (n.films){
+    n.films = n.films.map(f => ({ title:f[0], year:f[1], gross:f[2], co:f[3] || "", w:f[4] || "", label:n, kind:n.kind }));
+    n.films.forEach(f => f.key = `${n.id}|${f.title}|${f.year}`);
+    n.allFilms = n.films; n.leaves = [];
+  } else { n.allFilms = []; n.leaves = []; }
+  n.movies = n.allFilms.filter(f => f.kind === "film");
+  n.shows = n.allFilms.filter(f => f.kind === "tv");
+  n.metric = n.movies.length && n.shows.length ? "mixed" : n.shows.length ? "tv" : "film";
+  n.total = n.metric === "mixed" ? 0 : d3.sum(n.allFilms, f => f.gross);
+}
+prep(ROOT, null, 0, ROOT.color);
+const STUDIOS = ROOT.children.filter(c => !c.inert);
+const valueOf = n => n.parent === ROOT ? n.share : n.parent.metric === "mixed" ? Math.max(1, n.leaves.length) : n.total;
+
+/* ======================= HELPERS ======================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const money = m => m >= 1000 ? `$${(m/1000).toFixed(m >= 10000 ? 1 : 2)}B` : `$${Math.round(m)}M`;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const ratings = k => k >= 1000 ? `${(k / 1000).toFixed(k >= 10000 ? 0 : 1)}M` : k < 10 ? `${+k.toFixed(1)}K` : `${Math.round(k)}K`;
+const fmtVal = f => f.kind === "tv" ? ratings(f.gross) + " ratings" : money(f.gross);
+const fmtTotal = n => n.metric === "tv" ? ratings(n.total) + " ratings" : money(n.total);
+const countLine = n => [n.movies.length ? `${n.movies.length} films` : "", n.shows.length ? `${n.shows.length} shows` : ""].filter(Boolean).join(", ");
+const subFor = n => n.parent === ROOT ? `${n.share}%` : (n.children && (n.metric === "mixed" || n.parent.metric === "mixed")) ? `${n.leaves.length} brands` : fmtTotal(n);
+function wikiURL(f){
+  let q = f.title;
+  if (f.kind === "tv"){
+    if (f.w === "s") q += " (TV series)"; else if (f.w === "y") q += ` (${f.year} TV series)`; else if (f.w === "a") q += " (American TV series)"; else if (f.w) q = f.w;
+  } else if (f.w === "y") q += ` (${f.year} film)`; else if (f.w === "f") q += " (film)"; else if (f.w) q = f.w;
+  return "https://en.wikipedia.org/wiki/Special:Search?go=Go&search=" + encodeURIComponent(q);
+}
+function initials(t){
+  const stop = new Set(["the","a","an","of","and","in","to","at","by","for","with","from","on","part"]);
+  const words = t.replace(/[:–\-,.!*?']/g, " ").replace(/&/g, " ").split(/\s+/).filter(Boolean);
+  let w = words.filter(x => !stop.has(x.toLowerCase())); if (!w.length) w = words;
+  if (/^\d+$/.test(w[0])) return w[0].slice(0, 4);
+  return w.slice(0, 2).map(x => x[0].toUpperCase()).join("");
+}
+const shade = f => d3.interpolateRgb(f.label.color, "#0D2850")(clamp((2026 - f.year) / 52, 0, 1) * .55);
+function ancestors(n){ const a = []; let p = n; while (p){ a.unshift(p); p = p.parent; } return a; }
+const fullName = n => n.division ? `${n.parent.name} ${n.name === "Film" ? "film" : "TV and streaming"}` : n.name;
+function pathNames(n){ return ancestors(n).slice(1, -1).filter(a => !a.division).map(a => a.name); }
+function topGroup(n){ return ancestors(n)[1] || n; }
+function wrapText(s, halfWidth, fs){
+  const max = Math.max(5, Math.floor((halfWidth * 2) / (fs * .5)));
+  const words = s.split(" "); const lines = []; let cur = "";
+  words.forEach(w => { if (!cur) cur = w; else if ((cur + " " + w).length <= max) cur += " " + w; else { lines.push(cur); cur = w; } });
+  if (cur) lines.push(cur);
+  while (lines.length > 3){ const last = lines.pop(); lines[lines.length - 1] += " " + last; }
+  return lines;
+}
+
+/* ======================= ORRERY ======================= */
+const mq = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches:false };
+let REDUCE = mq.matches;
+const svg = d3.select("#orrery");
+const gGuides = svg.append("g").attr("class", "guides").attr("aria-hidden", "true");
+const ringA = gGuides.append("circle"), ringB = gGuides.append("circle"), ringOut = gGuides.append("circle");
+const ticks = gGuides.append("g");
+const gLinks = svg.append("g").attr("class", "links").attr("aria-hidden", "true");
+const web = svg.append("path").attr("class", "web").attr("aria-hidden", "true");
+const gNodes = svg.append("g").attr("class", "nodes");
+const wrapEl = $("#orreryWrap"), tip = $("#tip");
+
+let W = 800, H = 700, S = 700, cx = 400, cy = 350;
+let focus = ROOT, prevFocusId = null, direction = "down";
+let rot = 0, paused = false, last = performance.now(), geo = null;
+const guide = { a:0, b:0 };
+const records = new Map();
+const MAXDOTS = 24;
+
+function desired(){
+  const out = [{ key:focus.id, kind:"studio", data:focus, role:"center" }];
+  if (focus.parent) out.push({ key:focus.parent.id, kind:"studio", data:focus.parent, role:"parent" });
+  if (focus.children){
+    const kids = [...focus.children].sort((a, b) => ((a.inert ? 1 : 0) - (b.inert ? 1 : 0)) || valueOf(b) - valueOf(a));
+    kids.forEach((c, i) => out.push({ key:c.id, kind:"studio", data:c, role:"child", i, n:kids.length, value:valueOf(c) }));
+  } else {
+    const fs = [...focus.films].sort((a, b) => b.gross - a.gross).slice(0, MAXDOTS);
+    fs.forEach((f, i) => out.push({ key:"f:" + f.key, kind:"film", data:f, role:"child", i, n:fs.length, value:f.gross }));
+  }
+  return out;
+}
+function geom(kids){
+  const film = !focus.children;
+  const n = Math.max(1, kids.length);
+  const two = film && n > 10;
+  const step = Math.PI * 2 / n;
+  const Rc = S * (film ? .13 : .15);
+  const rA = two ? S * .285 : S * .36, rB = two ? S * .405 : rA;
+  const rMax = film
+    ? (two ? Math.min(S * .056, rA * Math.sin(step) * .95) : Math.min(S * .075, rA * Math.sin(step / 2) * .9))
+    : Math.min(S * .125, rA * Math.sin(step / 2) * .92);
+  return { film, n, two, Rc, ringA:rA, ringB:rB, rMax, pr:Math.max(17, S * .036), maxV:d3.max(kids, d => d.value) || 1 };
+}
+function targetFor(d){
+  if (d.role === "center") return { x:cx, y:cy, r:geo.Rc };
+  if (d.role === "parent") return { x:geo.pr + 24, y:geo.pr + 24, r:geo.pr };
+  const a = -Math.PI / 2 + d.i * (Math.PI * 2 / d.n) + rot;
+  const rr = geo.two && d.i % 2 ? geo.ringB : geo.ringA;
+  const tvScale = d.kind === "film" ? d.data.kind === "tv" : focus.metric === "tv";
+  const r = Math.max(d.kind === "film" ? 4 : 13, geo.rMax * Math.pow(d.value / geo.maxV, tvScale ? .38 : .5));
+  return { x:cx + rr * Math.cos(a), y:cy + rr * Math.sin(a), r };
+}
+
+function centerSub(n){
+  if (n === ROOT) return "$9.05B in US and Canada tickets";
+  if (n.parent === ROOT) return `${n.share}% of 2025 tickets`;
+  if (n.metric === "mixed") return `${n.leaves.length} brands, ${countLine(n)}`;
+  return `${fmtTotal(n)} across ${countLine(n)}`;
+}
+function textBlock(g, lines, fs, sub, subFs){
+  const lh = fs * .94, total = lines.length * lh + (sub ? subFs * 1.55 : 0);
+  let y = -total / 2 + fs * .78;
+  lines.forEach(l => { g.append("text").attr("y", y).attr("font-size", fs).attr("font-weight", 800).text(l); y += lh; });
+  if (sub) g.append("text").attr("class", "sub").attr("y", y + subFs * .45).attr("font-size", subFs).text(sub);
+}
+
+function build(rec){
+  const d = rec.d, g = rec.el, r = rec.base.r, n = d.data;
+  g.selectAll("*").remove(); rec.sats = null;
+  g.attr("class", `node ${d.kind} ${d.role}${n.inert ? " inert" : ""}`);
+  if (d.kind === "film"){
+    g.append("circle").attr("class", "hit").attr("r", r + 5);
+    const fill = shade(n);
+    if (n.kind === "tv") g.append("rect").attr("class", "dot").attr("x", -r * 1.12).attr("y", -r * .84).attr("width", r * 2.24).attr("height", r * 1.68).attr("rx", r * .28).attr("fill", fill);
+    else g.append("circle").attr("class", "dot").attr("r", r).attr("fill", fill);
+    if (r >= 12){
+      const fs = clamp(r * .58, 8, 20);
+      g.append("text").attr("class", "ini" + (d3.hsl(fill).l < .58 ? " lt" : "")).attr("y", fs * .36).attr("font-size", fs).text(initials(n.title));
+    }
+    g.attr("tabindex", null).attr("role", null).attr("aria-label", null);
+    return;
+  }
+  const col = n.color, logo = n.inert ? null : LOGOS.get(n.id);
+  if (!n.inert) g.append("circle").attr("class", "base").attr("r", r);
+  if (d.role !== "parent") g.append("circle").attr("class", "halo").attr("r", r + (d.role === "center" ? 13 : 7)).attr("stroke", col);
+  g.append("circle").attr("class", "disc").attr("r", r)
+    .attr("fill", logo ? (logo.bg === "dark" ? "#0D2850" : "#F3F6FA") : n.inert ? "none" : col)
+    .attr("fill-opacity", logo ? 1 : d.role === "center" ? .2 : d.role === "parent" ? .24 : .14);
+  if (logo) addLogo(g, rec, r, logo.src, d.role === "center" ? .6 : .66);
+  g.append("circle").attr("class", "rim").attr("r", r).attr("stroke", n.inert ? "rgba(234,242,251,.4)" : col);
+  if (d.role === "center" && !logo) g.append("circle").attr("class", "inner").attr("r", r * .88).attr("stroke", col);
+
+  if (d.role === "child" && !n.inert){
+    let src;
+    if (n.children){
+      const top = {}; n.leaves.forEach(l => top[l.kind] = Math.max(top[l.kind] || 0, l.total));
+      src = n.leaves.map(l => l.total / (top[l.kind] || 1)).sort((a, b) => b - a).slice(0, 14);
+    } else src = (n.films || []).map(f => f.gross).sort((a, b) => b - a).slice(0, 6);
+    const mx = d3.max(src) || 1, m = src.length;
+    if (m){
+      rec.sats = g.append("g").attr("class", "sats");
+      src.forEach((v, i) => {
+        const a = i * 2 * Math.PI / m, sr = 1.8 + 3.4 * Math.sqrt(v / mx), rr = r + 7 + sr;
+        rec.sats.append("circle").attr("cx", rr * Math.cos(a)).attr("cy", rr * Math.sin(a)).attr("r", sr).attr("fill", col).attr("fill-opacity", .85);
+      });
+    }
+  }
+
+  if (d.role === "parent"){
+    g.append("text").attr("class", "plabel").attr("x", r + 10).attr("y", 4.5).text(S < 560 ? "Back" : `Back to ${n === ROOT ? "all studios" : n.name}`);
+    g.attr("tabindex", 0).attr("role", "button").attr("aria-label", `Back to ${n.name}`);
+  } else if (d.role === "center"){
+    if (logo) g.append("text").attr("class", "sub").attr("y", r + 34).attr("font-size", clamp(r * .1, 12, 15)).text(centerSub(n));
+    else {
+      const fs = clamp(r * .24, 17, 46);
+      textBlock(g, wrapText(n.centerName || n.name, r * .86, fs), fs, centerSub(n), clamp(r * .1, 11, 15));
+    }
+    g.attr("tabindex", 0).attr("role", "button").attr("aria-label", `Show titles for ${n.name}`);
+  } else {
+    const sub = subFor(n);
+    if (logo){
+      g.append("text").attr("class", "olabel").attr("y", r + 24).text(n.name);
+      if (r >= 26) g.append("text").attr("class", "sub").attr("y", r + 40).attr("font-size", 12).text(sub);
+    } else if (r >= 26){
+      const fs = clamp(r * .27, 10, 26);
+      textBlock(g, wrapText(n.name, r * .8, fs), fs, r >= 34 ? sub : "", clamp(r * .13, 10.5, 14));
+    } else {
+      g.append("text").attr("class", "olabel").attr("y", r + 24).text(n.name);
+    }
+    if (n.inert) g.attr("tabindex", null).attr("role", null).attr("aria-label", null);
+    else g.attr("tabindex", 0).attr("role", "button").attr("aria-label", `Open ${n.name}, ${sub}`);
+  }
+}
+
+function bindEvents(rec){
+  rec.el
+    .on("click", () => activate(rec))
+    .on("keydown", ev => { if (ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); activate(rec); } })
+    .on("pointerenter", ev => { paused = true; showTip(rec, ev); })
+    .on("pointermove", ev => moveTip(ev))
+    .on("pointerleave", () => { paused = false; hideTip(); })
+    .on("focus", () => { paused = true; showTip(rec, null); })
+    .on("blur", () => { paused = false; hideTip(); })
+    .on("dragover", ev => { if (!dropTarget(rec)) return; ev.preventDefault(); paused = true; rec.el.classed("drop", true); })
+    .on("dragleave", () => { paused = false; rec.el.classed("drop", false); })
+    .on("drop", ev => {
+      rec.el.classed("drop", false); paused = false;
+      if (!dropTarget(rec)) return;
+      ev.preventDefault();
+      const f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+      if (f) setLogo(rec.d.data, f);
+    });
+}
+const dropTarget = rec => canEdit() && !rec.exiting && rec.d.kind === "studio" && !rec.d.data.inert && rec.d.data !== ROOT;
+
+function activate(rec){
+  if (rec.exiting) return;
+  const d = rec.d; hideTip(); paused = false;
+  if (d.kind === "film") return scrollToFilm(d.data);
+  if (d.data.inert) return;
+  if (d.role === "child") setFocus(d.data, "down");
+  else if (d.role === "parent") setFocus(d.data, "up");
+  else if (d.role === "center") document.getElementById("titles").scrollIntoView({ behavior:REDUCE ? "auto" : "smooth" });
+}
+
+function sync(){
+  const want = desired();
+  geo = geom(want.filter(d => d.role === "child"));
+  const keys = new Set(want.map(d => d.key));
+  const oldCenter = prevFocusId ? records.get(prevFocusId) : null;
+  for (const rec of records.values()){
+    if (keys.has(rec.key) || rec.exiting) continue;
+    rec.exiting = true; rec.startAt = 0; rec.el.style("pointer-events", "none").attr("tabindex", null);
+    const c = rec.cur;
+    if (direction === "up" && oldCenter && oldCenter !== rec && rec.d.role === "child"){ rec.anchor = oldCenter; rec.tgt = { x:c.x, y:c.y, r:0, o:0 }; }
+    else if (rec.d.role === "parent") rec.tgt = { x:-80, y:-80, r:0, o:0 };
+    else rec.tgt = { x:cx + (c.x - cx) * 1.7, y:cy + (c.y - cy) * 1.7, r:0, o:0 };
+  }
+  const now = performance.now();
+  want.forEach(d => {
+    let rec = records.get(d.key);
+    const t = targetFor(d);
+    if (!rec){
+      rec = { key:d.key, el:gNodes.append("g"), phase:Math.random() * 6.28 };
+      bindEvents(rec);
+      if (d.role === "parent") rec.cur = { x:t.x, y:t.y, r:.01, o:0 };
+      else if (d.role === "child" && direction === "up") rec.cur = { x:cx + (t.x - cx) * 1.6, y:cy + (t.y - cy) * 1.6, r:.01, o:0 };
+      else rec.cur = { x:cx, y:cy, r:.01, o:0 };
+      rec.tgt = { ...t, o:1 };
+      if (d.role === "child" && !REDUCE) rec.startAt = now + 80 + d.i * (d.kind === "film" ? 22 : 45);
+      records.set(d.key, rec);
+    } else if (rec.exiting){
+      rec.exiting = false; rec.anchor = null; rec.el.style("pointer-events", null);
+    }
+    rec.d = d; rec.base = { r:Math.max(1, t.r) };
+    build(rec);
+  });
+  const p = focus.parent && records.get(focus.parent.id); if (p) p.el.raise();
+  const c = records.get(focus.id); if (c) c.el.raise();
+  if (REDUCE) frame(performance.now() + 1);
+}
+
+function buildTicks(){
+  ticks.selectAll("*").remove();
+  const R = S * .485;
+  for (let i = 0; i < 120; i++){
+    const a = i * Math.PI / 60, long = i % 10 === 0, l = long ? 11 : 4;
+    ticks.append("line").attr("x1", R * Math.cos(a)).attr("y1", R * Math.sin(a))
+      .attr("x2", (R - l) * Math.cos(a)).attr("y2", (R - l) * Math.sin(a)).attr("stroke-opacity", long ? 1 : .6);
+  }
+}
+
+function frame(now){
+  const dt = Math.min(60, Math.max(0, now - last)); last = now;
+  if (!paused && !REDUCE) rot += dt * .000012;
+  const k = REDUCE ? 1 : 1 - Math.exp(-dt / 170);
+  for (const rec of records.values()){
+    if (rec.startAt && now < rec.startAt){ rec.el.style("opacity", 0); continue; }
+    if (!rec.exiting){ const t = targetFor(rec.d); rec.tgt = { x:t.x, y:t.y, r:t.r, o:1 }; }
+    else if (rec.anchor){ rec.tgt.x = rec.anchor.cur.x; rec.tgt.y = rec.anchor.cur.y; }
+    const c = rec.cur, t = rec.tgt;
+    c.x += (t.x - c.x) * k; c.y += (t.y - c.y) * k; c.r += (t.r - c.r) * k; c.o += (t.o - c.o) * k;
+    const s = Math.max(.0001, c.r / rec.base.r);
+    rec.el.attr("transform", `translate(${c.x.toFixed(2)},${c.y.toFixed(2)}) scale(${s.toFixed(4)})`).style("opacity", c.o.toFixed(3));
+    if (rec.sats) rec.sats.attr("transform", `rotate(${(((rot * 5 + rec.phase) * 57.2958) % 360).toFixed(2)})`);
+    if (rec.exiting && c.o < .015){ rec.el.remove(); records.delete(rec.key); }
+  }
+  drawLinks(); drawGuides(k);
+  if (!REDUCE) requestAnimationFrame(frame);
+}
+
+function drawLinks(){
+  const center = records.get(focus.id);
+  const kids = [...records.values()].filter(r => r.d.role === "child" && r !== center && !(r.startAt && last < r.startAt));
+  gLinks.selectAll("path").data(center ? kids : [], r => r.key).join("path")
+    .attr("d", r => {
+      const x0 = center.cur.x, y0 = center.cur.y, x1 = r.cur.x, y1 = r.cur.y;
+      const qx = (x0 + x1) / 2 - (y1 - y0) * .16, qy = (y0 + y1) / 2 + (x1 - x0) * .16;
+      return `M${x0.toFixed(1)},${y0.toFixed(1)}Q${qx.toFixed(1)},${qy.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`;
+    })
+    .attr("stroke", r => r.d.kind === "film" ? r.d.data.label.color : r.d.data.color)
+    .attr("stroke-opacity", r => r.cur.o * (r.d.kind === "film" ? .2 : .4));
+  const strand = kids.filter(r => !r.exiting && r.d.kind === "studio").sort((a, b) => a.d.i - b.d.i);
+  if (strand.length >= 3){
+    const o = d3.min(strand, r => r.cur.o);
+    web.attr("d", "M" + strand.map(r => `${r.cur.x.toFixed(1)},${r.cur.y.toFixed(1)}`).join("L") + "Z").style("opacity", o);
+  } else web.style("opacity", 0);
+}
+function drawGuides(k){
+  guide.a += (geo.ringA - guide.a) * k; guide.b += (geo.ringB - guide.b) * k;
+  ringA.attr("cx", cx).attr("cy", cy).attr("r", guide.a);
+  ringB.attr("cx", cx).attr("cy", cy).attr("r", guide.b).style("opacity", geo.two ? 1 : 0);
+  ringOut.attr("cx", cx).attr("cy", cy).attr("r", S * .485).style("opacity", .7);
+  ticks.attr("transform", `translate(${cx},${cy}) rotate(${(-rot * 40).toFixed(2)})`);
+}
+
+/* ---------- Tooltip ---------- */
+function showTip(rec, ev){
+  const d = rec.d, n = d.data; let html;
+  if (d.kind === "film"){
+    html = `<b>${esc(n.title)}</b><span>${n.year}, ${esc(n.label.name)}</span><span>${fmtVal(n)}${n.kind === "tv" ? " on IMDb" : " worldwide"}</span><em>Select to find it in the table</em>`;
+  } else if (n.inert){
+    html = `<b>${esc(n.name)}</b><span>${n.share}% of 2025 tickets</span><span>${esc(n.blurb)}</span>`;
+  } else {
+    const line = n === ROOT ? "Eight studios mapped" : centerSub(n);
+    const owner = n === ROOT ? "" : n.parent === ROOT ? n.owner : pathNames(n).join(" / ");
+    const cue = d.role === "child" ? "Select to open" : d.role === "parent" ? "Select to go back" : "Select to see the titles";
+    html = `<b>${esc(fullName(n))}</b>${owner ? `<span>${esc(owner)}</span>` : ""}<span>${line}</span><em>${cue}</em>`;
+  }
+  tip.innerHTML = html; tip.classList.add("on");
+  if (ev) moveTip(ev);
+  else { const b = wrapEl.getBoundingClientRect(); tip.style.left = rec.cur.x + "px"; tip.style.top = (rec.cur.y - rec.cur.r) + "px"; void b; }
+}
+function moveTip(ev){
+  const b = wrapEl.getBoundingClientRect();
+  const x = clamp(ev.clientX - b.left, 130, b.width - 130);
+  tip.style.left = x + "px"; tip.style.top = Math.max(90, ev.clientY - b.top) + "px";
+}
+function hideTip(){ tip.classList.remove("on"); }
+
+/* ======================= SIDE PANEL ======================= */
+function renderSide(){
+  const chain = ancestors(focus);
+  $("#crumbs").innerHTML = focus === ROOT ? "" : chain.map((n, i) => i === chain.length - 1
+    ? `<span aria-current="page">${esc(n.name)}</span>`
+    : `<button type="button" data-id="${n.id}">${esc(n.name)}</button><span class="sep" aria-hidden="true">/</span>`).join("");
+  $("#crumbs").querySelectorAll("button").forEach(b => b.addEventListener("click", () => setFocus(BY_ID.get(b.dataset.id), "up")));
+
+  const n = focus, leaf = !n.children;
+  let owner, stats, legend;
+  if (n === ROOT){
+    owner = "Sized by share of 2025 US and Canada ticket sales";
+    stats = [["Share mapped", "90.6%"], ["Brands", n.leaves.length], ["Films", n.movies.length], ["Shows", n.shows.length]];
+    legend = "Circle area shows share of 2025 ticket sales. The dots around each circle are its brands.";
+  } else {
+    owner = n.owner || (n.parent === ROOT ? "" : "Part of " + (pathNames(n).join(" / ") || n.parent.name));
+    stats = [];
+    if (n.parent === ROOT) stats.push(["2025 ticket share", n.share + "%"]);
+    if (!leaf) stats.push(["Brands", n.leaves.length]);
+    if (n.movies.length) stats.push(["Films", n.movies.length]);
+    if (n.shows.length) stats.push(["Shows", n.shows.length]);
+    if (n.metric !== "mixed" && n.parent !== ROOT) stats.push([n.metric === "tv" ? "IMDb ratings" : "Combined gross", n.metric === "tv" ? ratings(n.total) : money(n.total)]);
+    legend = leaf
+      ? (n.kind === "tv" ? "Each screen is one show, sized by its IMDb ratings count on a compressed scale. Deeper shades are older shows." : "Each dot is one film, sized by worldwide gross. Deeper shades are older films.")
+      : n.metric === "mixed" ? "Circle area shows how many brands each part holds."
+      : n.metric === "tv" ? "Circles follow each brand's combined IMDb ratings count, on a compressed scale so smaller channels stay visible."
+      : "Circle area shows the combined worldwide gross of each label's films.";
+  }
+  const pool = n.movies.length ? n.movies : n.shows;
+  const top = [...pool].sort((a, b) => b.gross - a.gross)[0];
+  const lead = !top ? "" : top.kind === "tv"
+    ? `The most rated show is ${top.title} (${top.year}), with about ${ratings(top.gross)} IMDb ratings.`
+    : `The biggest film is ${top.title} (${top.year}) at ${money(top.gross)} worldwide.`;
+  const blurb = n.blurb || `${leaf ? countLine(n) : `${n.leaves.length} brands, ${countLine(n)}`} listed. ${lead}`;
+  $("#info").innerHTML = `
+    <h2>${esc(n.name)}</h2>
+    <p class="owner">${esc(owner)}</p>
+    <p class="blurb">${esc(blurb)}</p>
+    <dl class="stats">${stats.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
+    <p class="legend"><svg width="34" height="22" viewBox="0 0 34 22" aria-hidden="true"><circle cx="8" cy="14" r="5" fill="none" stroke="rgba(234,242,251,.7)"/><circle cx="23" cy="11" r="9.5" fill="none" stroke="rgba(234,242,251,.7)"/></svg><span>${legend}</span></p>
+    <button class="to-titles" type="button">Browse the titles</button>`;
+  $("#info .to-titles").addEventListener("click", () => document.getElementById("titles").scrollIntoView({ behavior:REDUCE ? "auto" : "smooth" }));
+}
+
+/* ======================= TABLE ======================= */
+const filterEl = $("#filter");
+let rowMap = new Map(), tableKind = "film";
+function renderTable(){
+  if (tableKind === "film" && !focus.movies.length) tableKind = "tv";
+  if (tableKind === "tv" && !focus.shows.length) tableKind = "film";
+  const both = focus.movies.length && focus.shows.length;
+  $("#kindTabs").innerHTML = both ? `<button type="button" data-k="film" aria-pressed="${tableKind === "film"}">Films</button><button type="button" data-k="tv" aria-pressed="${tableKind === "tv"}">Shows</button>` : "";
+  $("#kindTabs").querySelectorAll("button").forEach(b => b.onclick = () => { tableKind = b.dataset.k; renderTable(); });
+  $("#metricHead").textContent = tableKind === "tv" ? "IMDb ratings" : "Worldwide gross";
+  const isTv = tableKind === "tv";
+  const sorted = [...(isTv ? focus.shows : focus.movies)].sort((a, b) => b.gross - a.gross);
+  const rank = new Map(sorted.map((f, i) => [f, i + 1]));
+  const q = filterEl.value.trim().toLowerCase();
+  let rows = q ? sorted.filter(f => f.title.toLowerCase().includes(q) || f.label.name.toLowerCase().includes(q) || f.co.toLowerCase().includes(q) || pathNames(f.label).join(" ").toLowerCase().includes(q)) : sorted;
+  rows = rows.slice(0, 100);
+  const max = sorted.length ? sorted[0].gross : 1;
+  const name = focus === ROOT ? "Every studio" : fullName(focus);
+  const noun = isTv ? "shows" : "films";
+  $("#titlesHeading").textContent = `${name}: the top ${Math.min(100, sorted.length)} ${noun}`;
+  $("#titlesSub").textContent = (isTv
+    ? "Ranked by the number of IMDb user ratings, a rough measure of popularity. Counts are approximate."
+    : "Ranked by worldwide box office gross, not adjusted for inflation.") + `${sorted.length > 100 ? ` Showing 100 of ${sorted.length} ${noun} listed.` : ""} Titles open on Wikipedia.`;
+  const tb = $("#rows");
+  if (!rows.length){ tb.innerHTML = `<tr><td colspan="5" class="empty">No titles match "${esc(filterEl.value)}". Clear the filter to see the full list.</td></tr>`; rowMap = new Map(); return; }
+  tb.innerHTML = rows.map(f => {
+    const c = f.label.color, fc = shade(f), url = wikiURL(f), path = pathNames(f.label);
+    const where = path.length ? path.join(" / ") : (topGroup(f.label).owner || "");
+    return `<tr data-key="${esc(f.key)}">
+      <td class="rank">${rank.get(f)}</td>
+      <td class="cover"><a href="${url}" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true"><div class="frame${isTv ? " tv" : ""}${d3.hsl(fc).l < .5 ? " lt" : ""}" style="--c:${fc}"><span>${esc(initials(f.title))}</span><small>${f.year}</small></div></a></td>
+      <td class="t"><a href="${url}" target="_blank" rel="noopener">${esc(f.title)}</a><span class="yr">${f.year}</span><span class="lbl-m">${esc(f.label.name)}</span></td>
+      <td class="g"><div class="bar" aria-hidden="true"><i style="width:${(f.gross / max * 100).toFixed(1)}%;background:color-mix(in srgb, ${c} 78%, var(--ink))"></i></div><span>${isTv ? ratings(f.gross) : money(f.gross)}</span></td>
+      <td class="s"><span class="sw" style="background:${c}"></span>${esc(f.label.name)}<small>${esc(where)}</small>${f.co ? `<small>${isTv ? esc(f.co[0].toUpperCase() + f.co.slice(1)) : "with " + esc(f.co)}</small>` : ""}</td>
+    </tr>`;
+  }).join("");
+  rowMap = new Map(); tb.querySelectorAll("tr[data-key]").forEach(tr => rowMap.set(tr.dataset.key, tr));
+}
+filterEl.addEventListener("input", renderTable);
+function scrollToFilm(f){
+  if (f.kind !== tableKind){ tableKind = f.kind; filterEl.value = ""; renderTable(); }
+  if (!rowMap.has(f.key)){ filterEl.value = ""; renderTable(); }
+  const tr = rowMap.get(f.key); if (!tr) return;
+  tr.scrollIntoView({ behavior:REDUCE ? "auto" : "smooth", block:"center" });
+  tr.classList.remove("flash"); void tr.offsetWidth; tr.classList.add("flash");
+}
+
+/* ======================= YOUR OWN LOGOS =======================
+   Shared mode (inside claude.ai, for the owner): images go to the artifact's
+   asset store and a "logos" collection, so everyone who opens the page sees them.
+   Local mode (no platform storage): images stay in this browser only. */
+let LOGOS = new Map(), logoMode = "pending", DB = null, ASSETS = null, editing = false;
+const canEdit = () => logoMode === "shared" || logoMode === "local";
+const OK_TYPES = { png:"image/png", jpg:"image/jpeg", jpeg:"image/jpeg", webp:"image/webp", gif:"image/gif", svg:"image/svg+xml" };
+const LOCAL_KEY = "who-owns-logos-v1";
+
+function addLogo(g, rec, r, src, k){
+  const id = "clip-" + rec.key.replace(/[^\w-]/g, "_");
+  g.append("clipPath").attr("id", id).append("circle").attr("r", r * .97);
+  g.append("image").attr("href", src).attr("x", -r * k).attr("y", -r * k).attr("width", 2 * r * k).attr("height", 2 * r * k)
+    .attr("preserveAspectRatio", "xMidYMid meet").attr("clip-path", `url(#${id})`);
+}
+function refreshLogos(){
+  for (const rec of records.values()) if (!rec.exiting) build(rec);
+  const c = records.get(focus.id); if (c) c.el.raise();
+  renderLogoPanel();
+}
+function fileType(file){
+  if (Object.values(OK_TYPES).includes(file.type)) return file.type;
+  return OK_TYPES[(file.name.split(".").pop() || "").toLowerCase()] || "";
+}
+function logoStatus(msg){ const el = $("#logoStatus"); if (el) el.textContent = msg; lastStatus = msg; }
+let lastStatus = "";
+function errText(e){
+  const code = e && e.code;
+  if (code === "too_large") return "That file is too large. SVGs can be up to 2 MB, other images up to 20 MB.";
+  if (code === "unsupported_type") return "That file type isn't supported. Use a PNG, JPG, WebP, GIF or SVG.";
+  if (code === "rate_limited") return "Too many changes at once. Wait a moment and try again.";
+  if (code === "quota_or_state") return "This page's image storage is full. Remove a logo you no longer need and try again.";
+  if (code === "upstream_auth") return "Your session expired. Reload the page and try again.";
+  if (code === "local_full") return "This browser has no room left for more logos. Use smaller images or remove one.";
+  return "The logo couldn't be saved. Try again.";
+}
+function toDataURL(file, type){
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onerror = () => reject({ code:"read" });
+    fr.onload = () => {
+      if (type === "image/svg+xml") return resolve(fr.result);
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 480 / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL("image/png"));
+      };
+      img.onerror = () => reject({ code:"unsupported_type" });
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+function saveLocal(){
+  const obj = {}; LOGOS.forEach((v, k) => obj[k] = { src:v.src, bg:v.bg });
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(obj)); return true; } catch (e) { return false; }
+}
+function loadLocal(){
+  try {
+    const obj = JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}");
+    Object.entries(obj).forEach(([k, v]) => { if (BY_ID.has(k) && v && typeof v.src === "string" && v.src.startsWith("data:image/")) LOGOS.set(k, { src:v.src, bg:v.bg === "dark" ? "dark" : "light" }); });
+  } catch (e) {}
+}
+async function setLogo(node, file){
+  if (!canEdit() || !node || node.inert || node === ROOT) return;
+  const type = fileType(file);
+  if (!type) return logoStatus("That file type isn't supported. Use a PNG, JPG, WebP, GIF or SVG.");
+  logoStatus(`Saving the ${node.name} logo…`);
+  const prev = LOGOS.get(node.id);
+  try {
+    if (logoMode === "shared"){
+      const res = await ASSETS.upload(file, { type });
+      await DB.collection("logos").doc(node.id).set({ asset:res.id, bg:prev ? prev.bg : "light" });
+      if (prev && prev.asset && prev.asset !== res.id) ASSETS.delete(prev.asset).catch(() => {});
+      logoStatus(`Saved. Anyone who opens this page sees the ${node.name} logo.`);
+    } else {
+      const src = await toDataURL(file, type);
+      LOGOS.set(node.id, { src, bg:prev ? prev.bg : "light" });
+      if (!saveLocal()){ if (prev) LOGOS.set(node.id, prev); else LOGOS.delete(node.id); throw { code:"local_full" }; }
+      refreshLogos(); logoStatus(`Saved in this browser.`);
+    }
+  } catch (e) { logoStatus(errText(e)); }
+}
+async function removeLogo(node){
+  const prev = LOGOS.get(node.id); if (!prev) return;
+  try {
+    if (logoMode === "shared"){
+      await DB.collection("logos").doc(node.id).delete();
+      if (prev.asset) ASSETS.delete(prev.asset).catch(() => {});
+    } else { LOGOS.delete(node.id); saveLocal(); refreshLogos(); }
+    logoStatus(`Removed the ${node.name} logo.`);
+  } catch (e) { logoStatus(errText(e)); }
+}
+async function toggleBackdrop(node){
+  const prev = LOGOS.get(node.id); if (!prev) return;
+  const bg = prev.bg === "dark" ? "light" : "dark";
+  try {
+    if (logoMode === "shared") await DB.collection("logos").doc(node.id).update({ bg });
+    else { LOGOS.set(node.id, { ...prev, bg }); saveLocal(); refreshLogos(); }
+  } catch (e) { logoStatus(errText(e)); }
+}
+function renderLogoPanel(){
+  const panel = $("#logoPanel"); if (!panel) return;
+  $("#stage").classList.toggle("editing", editing);
+  $("#logoBtn").setAttribute("aria-pressed", String(editing));
+  $("#logoBtn").textContent = editing ? "Done adding logos" : "Add your own logos";
+  if (!editing || !canEdit()){ panel.innerHTML = ""; return; }
+  const target = focus === ROOT ? null : focus, has = target && LOGOS.has(target.id);
+  const where = logoMode === "shared" ? "Logos you add are saved with this page, so anyone you share it with sees them." : "Logos you add are saved in this browser only.";
+  panel.innerHTML = `<div class="logo-edit">
+    <p>${target ? `Logo for <strong>${esc(target.name)}</strong>` : "Open a studio to set its logo here."}</p>
+    <div class="row">
+      <button type="button" id="lgUp" ${target ? "" : "disabled"}>${has ? "Replace image" : "Choose image"}</button>
+      <button type="button" class="ghost" id="lgBg" ${has ? "" : "disabled"}>${has && LOGOS.get(target.id).bg === "dark" ? "Light backdrop" : "Dark backdrop"}</button>
+      <button type="button" class="ghost" id="lgRm" ${has ? "" : "disabled"}>Remove</button>
+    </div>
+    <p class="hint">You can also drop an image onto any circle, or paste one to set the logo for the circle in the middle. PNG, JPG, WebP, GIF or SVG with a transparent background looks best. ${where}</p>
+    <p class="status" id="logoStatus" aria-live="polite">${esc(lastStatus)}</p>
+  </div>`;
+  if (target){
+    $("#lgUp").onclick = () => { pendingNode = target; $("#logoFile").click(); };
+    $("#lgBg").onclick = () => toggleBackdrop(target);
+    $("#lgRm").onclick = () => removeLogo(target);
+  }
+}
+let pendingNode = null;
+$("#logoFile").addEventListener("change", ev => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f && pendingNode) setLogo(pendingNode, f);
+  ev.target.value = "";
+});
+$("#logoBtn").addEventListener("click", () => { editing = !editing; lastStatus = ""; renderLogoPanel(); });
+document.addEventListener("paste", ev => {
+  if (!editing || !canEdit() || focus === ROOT) return;
+  const item = [...((ev.clipboardData && ev.clipboardData.items) || [])].find(i => i.kind === "file" && i.type.startsWith("image/"));
+  if (item){ ev.preventDefault(); setLogo(focus, item.getAsFile()); }
+});
+$("#stage").addEventListener("dragover", ev => { if (canEdit() && ev.dataTransfer && [...ev.dataTransfer.types].includes("Files")) ev.preventDefault(); });
+$("#stage").addEventListener("drop", ev => { if (canEdit()) ev.preventDefault(); });
+
+const STATIC_LOGOS = {"20th":"logos/20th.webp","20th-tv":"logos/20th-tv.webp","a24":"logos/a24.webp","abc":"logos/abc.webp","abc-news":"logos/abc-news.webp","adult-swim":"logos/adult-swim.webp","amazon-mgm":"logos/amazon-mgm.webp","amazon-originals":"logos/amazon-originals.webp","animal-planet":"logos/animal-planet.webp","aniplex":"logos/aniplex.webp","bet":"logos/bet.webp","bluesky":"logos/bluesky.webp","bravo":"logos/bravo.webp","cartoon-network":"logos/cartoon-network.webp","castle-rock":"logos/castle-rock.webp","cbs":"logos/cbs.webp","cbs-news":"logos/cbs-news.webp","cnn":"logos/cnn.webp","columbia":"logos/columbia.webp","comedy-central":"logos/comedy-central.webp","crunchyroll":"logos/crunchyroll.webp","dc":"logos/dc.webp","discovery":"logos/discovery.webp","disney":"logos/disney.webp","disney-channel":"logos/disney-channel.webp","disney-film":"logos/disney-film.webp","disney-junior":"logos/disney-junior.webp","disney-plus":"logos/disney-plus.webp","disney-tv":"logos/disney-tv.webp","dwa":"logos/dwa.webp","espn":"logos/espn.webp","focus":"logos/focus.webp","food-network":"logos/food-network.webp","freeform":"logos/freeform.webp","fx":"logos/fx.webp","hbo":"logos/hbo.webp","hbo-max":"logos/hbo-max.webp","hgtv":"logos/hgtv.webp","hollywood-pictures":"logos/hollywood-pictures.webp","hulu":"logos/hulu.webp","id":"logos/id.webp","illumination":"logos/illumination.webp","lionsgate":"logos/lionsgate.webp","lionsgate-films":"logos/lionsgate-films.webp","lucasfilm":"logos/lucasfilm.webp","marvel":"logos/marvel.webp","mgm":"logos/mgm.webp","mgm-plus":"logos/mgm-plus.webp","mgm-tv":"logos/mgm-tv.webp","miramax":"logos/miramax.webp","mtv":"logos/mtv.webp","natgeo":"logos/natgeo.webp","nbc":"logos/nbc.webp","nbc-news":"logos/nbc-news.webp","nbc-sports":"logos/nbc-sports.webp","neon":"logos/neon.webp","newline":"logos/newline.webp","nick":"logos/nick.webp","nickelodeon":"logos/nickelodeon.webp","orion":"logos/orion.webp","paramount":"logos/paramount.webp","paramount-film":"logos/paramount-film.webp","paramount-network":"logos/paramount-network.webp","paramount-pictures":"logos/paramount-pictures.webp","paramount-plus":"logos/paramount-plus.webp","paramount-tv":"logos/paramount-tv.webp","paramount-tv-studios":"logos/paramount-tv-studios.webp","peacock":"logos/peacock.webp","pixar":"logos/pixar.webp","prime-video":"logos/prime-video.webp","screen-gems":"logos/screen-gems.webp","searchlight":"logos/searchlight.webp","showtime":"logos/showtime.webp","sky":"logos/sky.webp","skydance":"logos/skydance.webp","skydance-media":"logos/skydance-media.webp","sony":"logos/sony.webp","sony-film":"logos/sony-film.webp","sony-pictures-tv":"logos/sony-pictures-tv.webp","sony-tv":"logos/sony-tv.webp","spa":"logos/spa.webp","spc":"logos/spc.webp","summit":"logos/summit.webp","tbs":"logos/tbs.webp","telemundo":"logos/telemundo.webp","tlc":"logos/tlc.webp","tnt":"logos/tnt.webp","touchstone":"logos/touchstone.webp","tristar":"logos/tristar.webp","universal":"logos/universal.webp","universal-film":"logos/universal-film.webp","universal-pictures":"logos/universal-pictures.webp","universal-television":"logos/universal-television.webp","universal-tv":"logos/universal-tv.webp","wb":"logos/wb.webp","wb-film":"logos/wb-film.webp","wb-tv":"logos/wb-tv.webp","wbp":"logos/wbp.webp","wbpa":"logos/wbpa.webp","wbtv":"logos/wbtv.webp","wdas":"logos/wdas.webp","wdp":"logos/wdp.webp","working-title":"logos/working-title.png"};
+async function initLogos(){
+  logoMode = "static";
+  Object.entries(STATIC_LOGOS).forEach(([id, src]) => { if (BY_ID.has(id)) LOGOS.set(id, { src, bg:"light" }); });
+  refreshLogos();
+  return;
+  let db = null, assets = null;
+  try {
+    if (window.claude && typeof window.claude.use === "function")
+      [db, assets] = await Promise.all([window.claude.use("db"), window.claude.use("assets")]);
+  } catch (e) {}
+  if (db){
+    DB = db; ASSETS = assets; logoMode = assets ? "shared" : "readonly";
+    DB.collection("logos").onSnapshot(snap => {
+      const next = new Map();
+      snap.docs.forEach(d => {
+        const v = d.data() || {};
+        if (BY_ID.has(d.id) && typeof v.asset === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(v.asset))
+          next.set(d.id, { asset:v.asset, src:"/_blob/" + v.asset, bg:v.bg === "dark" ? "dark" : "light" });
+      });
+      LOGOS = next; refreshLogos();
+    }, () => {});
+  } else {
+    logoMode = "local"; loadLocal(); refreshLogos();
+  }
+  $("#logoBtn").hidden = !canEdit();
+}
+
+/* ======================= NAVIGATION ======================= */
+function setFocus(n, dir){
+  if (!n || n === focus || n.inert) return;
+  prevFocusId = focus.id; direction = dir; focus = n;
+  filterEl.value = ""; tableKind = n.movies.length ? "film" : "tv";
+  sync(); renderSide(); renderTable(); lastStatus = ""; renderLogoPanel();
+  try { history.replaceState(null, "", "#" + n.id); } catch (e) {}
+}
+document.addEventListener("keydown", ev => {
+  if (ev.key === "Escape" && focus.parent && document.activeElement !== filterEl) setFocus(focus.parent, "up");
+});
+
+function resize(){
+  const b = wrapEl.getBoundingClientRect();
+  W = Math.max(300, b.width); H = Math.max(300, b.height); S = Math.min(W, H); cx = W / 2; cy = H / 2;
+  svg.attr("viewBox", `0 0 ${W} ${H}`);
+  buildTicks(); sync();
+}
+if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(wrapEl);
+else window.addEventListener("resize", resize);
+if (mq.addEventListener) mq.addEventListener("change", e => { REDUCE = e.matches; if (!REDUCE){ last = performance.now(); requestAnimationFrame(frame); } else frame(performance.now()); });
+
+const start = BY_ID.get((location.hash || "").slice(1));
+if (start && !start.inert) focus = start;
+resize(); renderSide(); renderTable();
+if (!REDUCE) requestAnimationFrame(frame);
+initLogos();
+</script>
+</body>
+</html>
